@@ -74,17 +74,43 @@ fn to_vec(e: Expr) -> Vec<ExprItems> {
     match e {
         Lit(l) => vec![ExprItems::Lit(l)],
         BinOp(op, l, r) => {
-            let mut r = to_vec(*r);
-            match *l {
+            let mut vec = to_vec(*r);
+              match *l {
+                Par(p) => {
+                    //println!("par is: {:?}:",p);
+                    //p.unwrap();
+                    //vec.push(ExprItems::Op(op));
+                    //vec.push(ExprItems::Lit(l));
+                    //vec.
+                    //this is so tilting....
+                    vec.push(ExprItems::Op(op));
+                    let mut vec2 = to_vec(*p);
+                    //println!("vec2 is: {:?}:",vec2);
+                    vec.append(&mut vec2);
+                    //println!("vec is: {:?}:",vec);
+                    //vec.append(&mut to_vec(l));
+                    //println!("vec is: {:?}:",vec);
+                },
                 Lit(l) => {
-                    r.push(ExprItems::Op(op));
-                    r.push(ExprItems::Lit(l));
-                    r
-                }
-                // should never occur due to the Expr structure
+                    vec.push(ExprItems::Op(op));
+                    vec.push(ExprItems::Lit(l));
+                    //println!("vec is: {:?}:",vec);
+                }, 
+                //println!("vec is: {:?}:",vec);
+                //Ident(a) => to_vec(Expr::Ident(a)),
+                //IfThenElse(bo,bl ,o ) => to_vec(Expr::IfThenElse(bo,bl,o)),
                 _ => unreachable!(),
-            }
+            } 
+        vec
+
         }
+        Par(x) => {
+            to_vec(*x)
+        } 
+        Ident(a) => to_vec(Expr::Ident(a)),
+        IfThenElse(bo,bl ,o ) => to_vec(Expr::IfThenElse(bo,bl,o)),
+        
+
         // not yet implemented
         _ => unimplemented!(),
     }

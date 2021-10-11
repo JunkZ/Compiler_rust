@@ -1,7 +1,7 @@
 // Extra traits implemented for AST
 
 use crate::ast::*;
-use std::fmt;
+use std::{any::Any, fmt::{self, write}};
 
 // Back-port utility functions/traits for your AST here.
 
@@ -61,7 +61,86 @@ impl fmt::Display for Op {
 
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        let s = match self {
+            Literal::Bool(b) => b.to_string(),
+            Literal::Int(i) => i.to_string(),
+            Literal::Unit => "()".to_string(),
+            Literal::String(s) => s.to_string(),
+        };
+        write!(f, "{}", s)
+    }
+}
+impl fmt::Display for Statement { //pretty printing for statements
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Statement::Assign(a,b)=> format!("{} = {}",a, b),
+            Statement::Expr(c)=> format!("{} ",c), //should not have any text
+            Statement::Let(_,d,Some(e),f )=> format!("Let {}: {} = {}",d, e, f.clone().unwrap()),
+            Statement::Let(_,d,None,f )=> format!("{}",f.clone().unwrap()),
+            Statement::While(g,h)=> format!("while {} {}",g, h),
+            //Statement::Fn(f)=> format!("{}",f),
+            
+            Statement::Fn(_) => todo!(),
+            //_ => unimplemented!(),
+        };
+        write!(f, "{}", s)
+    }
+}
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Type::I32 => "i32",
+            Type::Bool => "bool",
+            Type::Unit => "()",
+            Type::String => "string",
+            Type::Ref(x) => {
+                let mut ref_print = String::from("&{");
+                ref_print.push_str(&x.to_string());
+                ref_print.push_str("}");
+                return write!(f, "{}",ref_print);
+            }
+        };
+        write!(f, "{}", s)
+    }
+}
+impl fmt::Display for Block { //pretty printing for blocks
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut hello = String::from("{\n");
+
+        for iter in self.statements.iter() {
+            //println!("CURRENT LINE IS: {:?}", iter.to_string());
+            hello.push_str("  ");
+            if iter.to_string() != ";" {
+                hello.push_str(&iter.to_string());
+                hello.push_str("\n");
+            }
+            
+        }
+        hello.push_str("}");
+        write!(f, "{}", hello)
+    }
+}
+
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Expr::Ident(a) => a.to_owned(),
+            Expr::Lit(l) => format!("{}", l),
+            Expr::BinOp(op, l, r) => format!("{} {} {}", l, op, r),
+            Expr::Par(e) => format!("({})", e),
+            Expr::IfThenElse(bo, bl, o) => {
+                if let None = o { //used help from: https://stackoverflow.com/questions/53177980/how-do-i-conditionally-execute-code-only-when-an-option-is-none
+                    format!("if {} {}", bo, bl)
+                } else {
+                    format!("if {} {} else {}", bo, bl, o.clone().unwrap()) //no display for option
+                }
+            }
+            Expr::Call(_, _) => todo!(),
+            Expr::Block(_) => todo!(),
+            Expr::UnOp(_, _) => todo!(),
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -74,19 +153,12 @@ fn display_literal() {
     assert_eq!(format!("{}", Literal::Bool(false)), "false");
     assert_eq!(format!("{}", Literal::Unit), "()");
 }
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
 #[test]
 fn display_type() {
     assert_eq!(format!("{}", Type::I32), "i32");
     assert_eq!(format!("{}", Type::Bool), "bool");
     assert_eq!(format!("{}", Type::Unit), "()");
-    assert_eq!(format!("{}", Type::String), "String");
+    assert_eq!(format!("{}", Type::String), "string");
 }
 
 impl fmt::Display for UnOp {
@@ -95,33 +167,25 @@ impl fmt::Display for UnOp {
     }
 }
 
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-impl fmt::Display for Block {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
 impl fmt::Display for Mutable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        todo!() //is this needed
     }
 }
 
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        write!(f,"{}", format!("{} {}", self.id, self.ty))
     }
 }
 
 impl fmt::Display for Parameters {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        let mut params_print = String::from("");
+        for x in self.0.iter() {
+            params_print.push_str(&x.to_string()); //XIA
+        };
+        write!(f, "{}",params_print)
     }
 }
 
@@ -143,11 +207,6 @@ impl fmt::Display for Prog {
     }
 }
 
-impl fmt::Display for Statement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
 
 #[test]
 fn display_if_then_else() {

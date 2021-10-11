@@ -1,8 +1,9 @@
-use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Type};
+use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type};
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
 
+use std::collections::{HashMap, VecDeque};
 use std::convert::{From, Into};
 use std::fmt::Debug;
 
@@ -13,7 +14,7 @@ pub enum Ty {
     Ref(Ref),
     Mut(Box<Ty>),
 }
-
+type TypeErr = String;
 // Helpers for Ty
 impl From<&Literal> for Ty {
     fn from(t: &Literal) -> Self {
@@ -25,7 +26,10 @@ impl From<&Literal> for Ty {
         })
     }
 }
-
+/* pub struct Loc {
+    Mutable: Mutable,
+    ty: Option<Type>,
+} */
 // Helper for Op
 impl Op {
     // Evaluate operator to literal
@@ -33,9 +37,10 @@ impl Op {
         todo!()
     }
 }
-
+pub type TypeEnv = HashMap<String, Type>;
+//pub struct TypeEnv(HashMap<String,Loc>);
 // General unification
-fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> {
+pub fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> {
     match expected == got {
         true => Ok((result.into(), None)),
         _ => Err(format!(
@@ -44,21 +49,128 @@ fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> 
         )),
     }
 }
+// op_types
+// returns types as: (expected left, expected right, result)
+#[allow(dead_code)]
+fn op_type(op: Op) -> (Type, Type, Type) {
+    match op {
+        Op::Add => (Type::I32, Type::I32, Type::I32),
+        Op::Sub => (Type::I32, Type::I32, Type::I32),
+        Op::Mul => (Type::I32, Type::I32, Type::I32),
+        Op::And => (Type::Bool, Type::Bool, Type::Bool),
+        Op::Or => (Type::Bool, Type::Bool, Type::Bool),
+        Op::Lt => (Type::Bool, Type::Bool, Type::Bool),
+        Op::Gt => (Type::Bool, Type::Bool, Type::Bool),
+        _ => todo!(),
+    }
+}
 
 impl Eval<Ty> for Expr {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         todo!("not implemented {:?}", self)
+        /* println!("expr self is {:?}",self);
+        println!("expr env is {:?}",self);
+        //fix let first
+        match self {
+            Expr::Ident(id) => match env.get(&id) {
+                
+                Some(t) => {
+                    Ok(t.clone())
+                }
+                None => {
+                    Err("variable not found".to_string())
+                }
+            },
+            Expr::Lit(Literal::Int(_)) => Ok(Type::I32),
+            Expr::Lit(Literal::Bool(_)) => Ok(Type::Bool),
+            Expr::Lit(Literal::Unit) => Ok(Type::Unit),
+    
+            #[allow(unused_variables)]
+            Expr::BinOp(op, l, r) => {
+                //this cleaner version was provided by Simon Nyberg in Lab 5 review #1
+                let left = check_expr(*l, env)?;
+                let right = check_expr(*r, env)?;
+                let expected = op_type(op);
+                unify(Ty::Lit(left), Ty::Lit(expected.0),None.unwrap())?;
+                unify(Ty::Lit(right), Ty::Lit(expected.1),None.unwrap())?;
+                Ok(expected.2)
+    
+            },
+    
+            #[allow(unused_variables)]
+            Expr::Par(e) => check_expr(*e, env),
+    
+            
+    
+            #[allow(unused_variables)]
+            Expr::IfThenElse(cond,t,e) => match e{
+                
+                //if else block exist, check that else & if blocks have same type, else return as unit
+                Some(e) => { 
+                    let l_block = check_block(t.clone(), env.clone())?;    
+                    let r_block = check_block(e.clone(), env.clone())?;
+                    //println!("{:?}l_block IS:",l_block);
+                    //println!("{:?}r_block IS:",r_block);
+                    if l_block == r_block {
+                        Ok(r_block)
+                    } else if r_block == Type::Unit{
+                        Ok(l_block)
+                    } else{
+                        Ok(Type::Unit)
+                    }
+                },
+                None => Ok(check_block(t, env.clone()).unwrap()),
+                
+            },
+            Expr::Call(_, _) => todo!(),
+            Expr::Block(_) => todo!(),
+            Expr::UnOp(_, _) => todo!(),
+            _ => unimplemented!(),
+        } */
     }
-}
+} 
 
 impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         todo!("not implemented {:?}", self)
-    }
+    /*     
+        let mut env = env;
+
+        #[allow(unused_variables)]
+        let mut return_ty = Type::Unit;
+        let mut buf = VecDeque::new();
+        for stmt in b.statements {
+            // update the return type for each iteration
+            let string = stmt.to_string();
+            //println!("{:?}STRING IS:",string);
+            if string.contains("Let")
+            || string.contains("Assign") 
+            || string.contains("While") {
+                return_ty = check_stmt(stmt, &mut env)?;
+            } else if string.contains("false") || string.contains("true") {
+                return_ty = Type::Bool
+                
+            } else if string.contains("+")|| string.contains("-") {
+                let type1 =buf.pop_front();
+                let type2 =buf.pop_front();
+                //println!("STRING IS:{:?}",string);
+                //println!("Type1 is : {:?} type2 is: {:?}",type1,type2);
+                if type1 != type2 && type1 != None && type1 != Some(Type::Unit){
+                    return_ty = Type::Unit
+                }
+                
+            }
+
+            buf.push_back(return_ty.clone());
+        }
+        Ok(return_ty)*/
+        } 
 }
 
 impl Eval<Ty> for FnDeclaration {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
+        //fn supposed to return type of body, or unit if empty
+        println!("env in fndecl is {:?}",env);
         todo!("not implemented {:?}", self)
     }
 }
@@ -68,7 +180,59 @@ impl Eval<Ty> for Prog {
         todo!("not implemented {:?}", self)
     }
 }
+impl Eval<Ty> for Statement {
+    fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
+        todo!("not implemented {:?}", self)
+    }
+}
+/* #[allow(unreachable_code)]
+Ok(match stmt.clone() {
+    Statement::Let(_,id, t, e) => {
+        // let a: i32 = 5 + 2
+        // for now just accept an ident
+        let f = stmt.clone();
+        if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
+            return Ok(Type::Unit)
+        }
+        return check_expr(e.unwrap(), env);
+    }
+    #[allow(unused_variables)]
+    Statement::Expr(e) => {
+        return check_expr(e, env);
+        // the type of an Expr is returned
+    }
+    #[allow(unused_variables)]
+    Statement::Assign(id, e) => {
+        // a = 5
+        let b = check_expr(e, env);
 
+        let a = check_expr(id, env);
+        if a.is_err() {
+            return Ok(Type::Unit)
+        } else if b.is_err() {
+            return Ok(Type::Unit)
+        } else if a == b {
+            return Ok(Type::Unit);
+        } else {
+            return Err("types mismatch for assign".to_string())
+        }
+    }
+    #[allow(unused_variables)]
+    Statement::While(e, b) => { 
+        let checkblock=check_block(b, env.clone());
+        let check= check_expr(e, &env.clone());
+        if unify(Ty::Lit(check.clone().unwrap()),Ty::Lit(Type::Bool),None.unwrap()).is_err() {
+            return check //^"None.unwrap()"" hahaha this is getting ridiculous
+        }
+        else {
+            return checkblock;
+        }
+        
+    }
+    Statement::Fn(f) => { 
+        return Ok(Type::Unit)
+    }
+}) */
 #[cfg(test)]
 mod tests {
     use super::Ty;
@@ -76,6 +240,18 @@ mod tests {
     use crate::common::parse_test;
 
     #[test]
+    fn test_block_let_simple() {
+        let v = parse_test::<Block, Ty>(
+            "
+    {
+        let a: i32 = 1;
+    }",
+        );
+        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
+    }
+
+    #[test]
+    
     fn test_block_let() {
         let v = parse_test::<Block, Ty>(
             "

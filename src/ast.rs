@@ -34,6 +34,7 @@ pub struct Prog(pub Vec<FnDeclaration>);
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Let(Mutable, String, Option<Type>, Option<Expr>),
+    //Let(Expr, Type, Expr),
     Assign(Expr, Expr),
     While(Expr, Block),
     Expr(Expr),
