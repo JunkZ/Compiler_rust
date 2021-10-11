@@ -43,3 +43,8 @@ fn \: Expr(<a_1:expr>) \rightarrow type \\
 fn \: Assign(<a_1:expr>,<a_2:expr>) \rightarrow type \\
 fn \: While(<a_1:expr>,<a_2:block>) \rightarrow type \\
 ```
+
+# Function
+```math
+fn : Fn(<a_1:block>) \rightarrow type \\ 
+```
