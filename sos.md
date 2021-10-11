@@ -11,7 +11,6 @@ b = (evaluated expr) bool;
 
 n = integer;
 
-m = integer;
 
 ```math
 \sigma = store \\
@@ -20,11 +19,11 @@ Var = \frac{}{<a,\sigma> \rightarrow  <n,\sigma>} \\
 # Operations
 bin = "And" | "Or" | "Lt" | "Gt" | "Leq" | "Geq"
 ```math
-Add = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n+m,\sigma> \rightarrow <n+m,\sigma> } \\
-Sub = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n-m,\sigma> \rightarrow <n-m,\sigma> } \\
-Mul = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n*m,\sigma> \rightarrow <n*m,\sigma> } \\
+Add = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n+n',\sigma> \rightarrow <n+n',\sigma> } \\
+Sub = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n-n',\sigma> \rightarrow <n-n',\sigma> } \\
+Mul = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n*n',\sigma> \rightarrow <n*n',\sigma> } \\
 
-bin\_op = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n \ bin \ m,\sigma> \rightarrow <n \ bin \  m,\sigma> } \\
+bin\_op = \frac{<n,\sigma> \rightarrow <n',\sigma> }{<n \ bin \ n',\sigma> \rightarrow <n \ bin \  n',\sigma> } \\
 ```
 ari_op = Add | Sub | Mul
 
@@ -48,5 +47,6 @@ Var = \frac{}{<a,\sigma> \rightarrow  <n,\sigma>} \\
 Assign = \frac{<a,a> \Downarrow n }{<x:=a,a>\Downarrow a[x \mapsto n]} \\
 Let = \frac{<a,a> \Downarrow n }{<x=a,a>\Downarrow a[x \mapsto n]} \\
 Block = \frac{<c_0,\sigma> \Downarrow \sigma' <c_1,\sigma> \Downarrow \sigma'' }{<c_0;c_1,\sigma>\Downarrow \sigma''} \\
+While \ true = \frac{<a_0,\sigma> \rightarrow <bool,\sigma'>}{while \ bool \rightarrow <a_0,\sigma''>}
 
 ```

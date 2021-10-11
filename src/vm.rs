@@ -138,7 +138,7 @@ impl Eval<Val> for Expr {
                 },
             },
             Expr::Call(_, _) => todo!(),
-            Expr::Block(_) => todo!(),
+            Expr::Block(b) => b.eval(env),
             Expr::UnOp(_, _) => todo!(), 
         }
     }

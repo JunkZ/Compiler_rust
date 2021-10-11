@@ -2,10 +2,12 @@ use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type}
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
+use crate::vm::Val;
 
 use std::collections::{HashMap, VecDeque};
 use std::convert::{From, Into};
 use std::fmt::Debug;
+use std::string;
 
 // type check
 #[derive(Debug, Clone, PartialEq)]
@@ -67,38 +69,40 @@ fn op_type(op: Op) -> (Type, Type, Type) {
 
 impl Eval<Ty> for Expr {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        todo!("not implemented {:?}", self)
-        /* println!("expr self is {:?}",self);
-        println!("expr env is {:?}",self);
-        //fix let first
+        //println!("expr self is {:?}",self);
+        //println!("expr env is {:?}",self);
         match self {
-            Expr::Ident(id) => match env.get(&id) {
-                
+            Expr::Ident(id) => match env.v.get(id).clone() {
                 Some(t) => {
-                    Ok(t.clone())
+                    Ok((t, env.v.get_ref(id)))
                 }
-                None => {
+                None => { 
                     Err("variable not found".to_string())
                 }
             },
-            Expr::Lit(Literal::Int(_)) => Ok(Type::I32),
-            Expr::Lit(Literal::Bool(_)) => Ok(Type::Bool),
-            Expr::Lit(Literal::Unit) => Ok(Type::Unit),
+            Expr::Lit(Literal::Int(_)) => Ok((Ty::Lit(Type::I32),None)),
+            Expr::Lit(Literal::Bool(_)) => Ok((Ty::Lit(Type::Bool),None)),
+            Expr::Lit(Literal::Unit) => Ok((Ty::Lit(Type::Unit),None)),
     
             #[allow(unused_variables)]
             Expr::BinOp(op, l, r) => {
-                //this cleaner version was provided by Simon Nyberg in Lab 5 review #1
-                let left = check_expr(*l, env)?;
-                let right = check_expr(*r, env)?;
-                let expected = op_type(op);
-                unify(Ty::Lit(left), Ty::Lit(expected.0),None.unwrap())?;
-                unify(Ty::Lit(right), Ty::Lit(expected.1),None.unwrap())?;
-                Ok(expected.2)
+                let left = l.eval(env)?;
+                let right = r.eval(env)?;
+                if left == right && *op != Op::Add && *op != Op::Sub {
+                    return Ok(left);
+                } else if left.0 == Ty::Lit(Type::I32) && right.0 == Ty::Lit(Type::String){
+                    return Ok((Ty::Lit(Type::I32),None));
+                } else {
+                    return Ok((Ty::Lit(Type::Unit),None));
+                }
+                //unify(Val::Lit(left.0), Ty::Lit(expected.0),None.unwrap())?;
+                //unify(Ty::Lit(right), Ty::Lit(expected.1),None.unwrap())?;
+                //Ok(expected.2)
     
             },
     
             #[allow(unused_variables)]
-            Expr::Par(e) => check_expr(*e, env),
+            Expr::Par(e) => e.eval(env),
     
             
     
@@ -107,46 +111,75 @@ impl Eval<Ty> for Expr {
                 
                 //if else block exist, check that else & if blocks have same type, else return as unit
                 Some(e) => { 
-                    let l_block = check_block(t.clone(), env.clone())?;    
-                    let r_block = check_block(e.clone(), env.clone())?;
+                    let l_block = t.eval(env)?;    
+                    let r_block = e.eval(env)?;
                     //println!("{:?}l_block IS:",l_block);
                     //println!("{:?}r_block IS:",r_block);
                     if l_block == r_block {
                         Ok(r_block)
-                    } else if r_block == Type::Unit{
+                    } else if r_block.0 == Ty::Lit(Type::Unit){
                         Ok(l_block)
                     } else{
-                        Ok(Type::Unit)
+                        Ok((Ty::Lit(Type::Unit),None))
                     }
                 },
-                None => Ok(check_block(t, env.clone()).unwrap()),
+                None => Ok(t.eval(env)?),
                 
             },
             Expr::Call(_, _) => todo!(),
-            Expr::Block(_) => todo!(),
+            Expr::Block(b) => b.eval(env),
             Expr::UnOp(_, _) => todo!(),
             _ => unimplemented!(),
-        } */
+        }
     }
 } 
 
 impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        todo!("not implemented {:?}", self)
-    /*     
         let mut env = env;
 
         #[allow(unused_variables)]
-        let mut return_ty = Type::Unit;
-        let mut buf = VecDeque::new();
-        for stmt in b.statements {
+        //let mut return_ty = Ty::Lit(Type::Unit);
+        //let mut buf = VecDeque::new();
+        Ok((Ty::Lit(Type::Unit),None))
+        /* for stmt in &self.statements {
+            match stmt {
+                Statement::Let(_,id, _, e) => {
+                    match e {
+                        Some(e) => {
+                            let l = e.eval(env)?.0;
+                            env.v.alloc(id, l);
+                        },
+                        None => {
+                            env.v.alloc(id, Type::UnInit);
+                        },
+                    }
+                }
+                Statement::Assign(id, e) => {
+                    let expr_e = e.eval(env)?;
+                    match id.eval(env).unwrap() {
+                        (Ty::Lit(_), None) => Err("Mismatch assignment")?,
+                        (Ty::Lit(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                        (Ty::Ref(_), None) => Err("Mismatch assignment")?,
+                        (Ty::Ref(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                        (Ty::UnInit, None) => Err("Mismatch assignment")?,
+                        (Ty::UnInit, Some(r)) => env.v.set_ref(r, expr_e.0),
+                        (Ty::Mut(_), None) => Err("Mismatch assignment")?,
+                        (Ty::Mut(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                    }
+                }
+                Statement::While(_, _) => todo!(),
+                Statement::Expr(_) => todo!(),
+                Statement::Fn(_) => todo!(),
+                
+            }
             // update the return type for each iteration
             let string = stmt.to_string();
             //println!("{:?}STRING IS:",string);
             if string.contains("Let")
             || string.contains("Assign") 
             || string.contains("While") {
-                return_ty = check_stmt(stmt, &mut env)?;
+                return_ty = stmt.eval(env)?;
             } else if string.contains("false") || string.contains("true") {
                 return_ty = Type::Bool
                 
@@ -161,10 +194,10 @@ impl Eval<Ty> for Block {
                 
             }
 
-            buf.push_back(return_ty.clone());
-        }
-        Ok(return_ty)*/
-        } 
+            buf.push_back(return_ty);
+    }
+    Ok(return_ty) */
+}
 }
 
 impl Eval<Ty> for FnDeclaration {
