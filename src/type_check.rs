@@ -136,22 +136,35 @@ impl Eval<Ty> for Expr {
 
 impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        let mut env = env;
+        //let mut env = env;
 
         #[allow(unused_variables)]
-        //let mut return_ty = Ty::Lit(Type::Unit);
+        let mut return_ty = (Ty::Lit(Type::Unit),None);
         //let mut buf = VecDeque::new();
-        Ok((Ty::Lit(Type::Unit),None))
-        /* for stmt in &self.statements {
+        //Ok((Ty::Lit(Type::Unit),None))
+        for stmt in &self.statements {
             match stmt {
-                Statement::Let(_,id, _, e) => {
+                Statement::Let(_,id, ty,e) => {
                     match e {
                         Some(e) => {
-                            let l = e.eval(env)?.0;
-                            env.v.alloc(id, l);
+                            match ty {
+                                Some(ty) => {
+                                    return_ty = (Ty::Lit(ty.clone()),None)
+                                },
+                                None => {
+                                    /* if id.contains("Bool") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
+                                        return_ty = (Ty::Lit(Type::Bool),None)
+                                    } else if id.contains("I32") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
+                                        return_ty = (Ty::Lit(Type::I32),None)
+                                    } else {
+                                        return_ty = (Ty::Lit(Type::Unit),None)
+                                    } */
+                                    return_ty = e.eval(env)?;
+                                },
+                            }
                         },
                         None => {
-                            env.v.alloc(id, Type::UnInit);
+                            return_ty = (Ty::Lit(Type::Unit),None)
                         },
                     }
                 }
@@ -162,8 +175,8 @@ impl Eval<Ty> for Block {
                         (Ty::Lit(_), Some(r)) => env.v.set_ref(r, expr_e.0),
                         (Ty::Ref(_), None) => Err("Mismatch assignment")?,
                         (Ty::Ref(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                        (Ty::UnInit, None) => Err("Mismatch assignment")?,
-                        (Ty::UnInit, Some(r)) => env.v.set_ref(r, expr_e.0),
+                        (Ty::Lit(Type::Unit), None) => Err("Mismatch assignment")?,
+                        (Ty::Lit(Type::Unit), Some(r)) => env.v.set_ref(r, expr_e.0),
                         (Ty::Mut(_), None) => Err("Mismatch assignment")?,
                         (Ty::Mut(_), Some(r)) => env.v.set_ref(r, expr_e.0),
                     }
@@ -173,30 +186,13 @@ impl Eval<Ty> for Block {
                 Statement::Fn(_) => todo!(),
                 
             }
-            // update the return type for each iteration
-            let string = stmt.to_string();
-            //println!("{:?}STRING IS:",string);
-            if string.contains("Let")
-            || string.contains("Assign") 
-            || string.contains("While") {
-                return_ty = stmt.eval(env)?;
-            } else if string.contains("false") || string.contains("true") {
-                return_ty = Type::Bool
-                
-            } else if string.contains("+")|| string.contains("-") {
-                let type1 =buf.pop_front();
-                let type2 =buf.pop_front();
-                //println!("STRING IS:{:?}",string);
-                //println!("Type1 is : {:?} type2 is: {:?}",type1,type2);
-                if type1 != type2 && type1 != None && type1 != Some(Type::Unit){
-                    return_ty = Type::Unit
-                }
-                
+            if self.semi {
+                return Ok((Ty::Lit(Type::Unit),None))
+            } else {
+                return Ok(return_ty)
             }
-
-            buf.push_back(return_ty);
     }
-    Ok(return_ty) */
+    Ok(return_ty)
 }
 }
 
@@ -271,20 +267,7 @@ mod tests {
     use super::Ty;
     use crate::ast::{Block, Prog, Type};
     use crate::common::parse_test;
-
     #[test]
-    fn test_block_let_simple() {
-        let v = parse_test::<Block, Ty>(
-            "
-    {
-        let a: i32 = 1;
-    }",
-        );
-        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
-    }
-
-    #[test]
-    
     fn test_block_let() {
         let v = parse_test::<Block, Ty>(
             "
