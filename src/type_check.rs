@@ -1,3 +1,5 @@
+use syn::ext::IdentExt;
+
 use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type};
 use crate::common::Eval;
 use crate::env::{Env, Ref};
@@ -72,7 +74,7 @@ impl Eval<Ty> for Expr {
         //println!("expr self is {:?}",self);
         //println!("expr env is {:?}",self);
         match self {
-            Expr::Ident(id) => match env.v.get(&id).clone() {
+            Expr::Ident(id) => match env.v.get(&id) {
                 Some(t) => {
                     Ok((t, None))
                 }
@@ -86,7 +88,11 @@ impl Eval<Ty> for Expr {
     
             #[allow(unused_variables)]
             Expr::BinOp(op, l, r) => {
-                let left = l.eval(env)?.0;
+                let le = l.eval(env);
+                if le.is_err() {
+                    println!("ERROR DETECTED!!! l is {:?} r is {:?}",l,r)
+                }
+                let left = le?.0;
                 let right = r.eval(env)?.0;
                 if left == right && *op== Op::Add {
                     return Ok(l.eval(env)?);
@@ -138,11 +144,7 @@ impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         let mut return_val = (Ty::Lit(Type::Unit),None);
         for stmt in &self.statements {
-            let x =stmt.eval(env);
-            if x != Err("variable not found".to_string()) {
-                return_val = x?;
-            }
-
+            return_val = stmt.eval(env)?;
         }
         if self.semi {
             return Ok((Ty::Lit(Type::Unit),None));
@@ -170,13 +172,29 @@ impl Eval<Ty> for Statement {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         match self {
         Statement::Let(_,id, ty,e) => {
-            match e {
-                Some(e) => {
-                    match ty.clone() {
-                        Some(ty) => {
-                            return Ok((Ty::Lit(ty),None));
+            match ty.clone() {
+                Some(ty) => {
+                    match e {
+                        Some(e) => {
+                            if Ty::Lit(ty.clone()) != e.eval(env)?.0 {
+                                return Err("missmatch".to_string())
+                            } else {
+                                println!("ty is some right?3 {:?}",ty);
+                                println!("Type ty is some right? {:?}",Ty::Lit(ty.clone()));
+                                env.v.alloc(id, Ty::Lit(ty.clone()));
+                                return Ok((Ty::Lit(ty),None));
+                            }
+                            
                         },
                         None => {
+                            env.v.alloc(id, Ty::Lit(ty.clone()));
+                            return Ok((Ty::Lit(ty),None))
+                        },
+                    }
+               },
+                None => {
+                    match e {
+                        Some(e) => {
                             let f = self.clone();
                             println!("f to string is {:?}",f.to_string());
                             println!("f contains false {:?}",f.to_string().contains("false"));
@@ -186,13 +204,18 @@ impl Eval<Ty> for Statement {
                             } else if f.to_string().contains("Int") && f.to_string().contains("false"){
                                 return Err("Mismatch assignment")?
                             }
-                            return Ok(e.eval(env)?);
+                            let e =e.eval(env);
+                            env.v.alloc(id, e.clone()?.0);
+                            return Ok((e?.0,None));
+                    
+                        }
+                        None => {
+                            return Ok((Ty::Lit(Type::Unit),None))
                         },
-                    }
-                },
-                None => {
-                    return Ok((Ty::Lit(Type::Unit),None))
-                },
+
+                        }
+                    
+                }
             }
         }
         Statement::Assign(id, e) => {
@@ -244,6 +267,16 @@ mod tests {
     use super::Ty;
     use crate::ast::{Block, Prog, Type};
     use crate::common::parse_test;
+    #[test]
+    fn test_block_let_simple() {
+        let v = parse_test::<Block, Ty>(
+            "
+    {
+        let a: i32 = 1;
+    }",
+        );
+        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
+    }
     #[test]
     fn test_block_let() {
         let v = parse_test::<Block, Ty>(
