@@ -134,6 +134,15 @@ impl Eval<Ty> for Expr {
     }
 } 
 
+/* impl Eval<Ty> for Block {
+    fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
+        let mut return_ty = (Ty::Lit(Type::Unit),None);
+        for stmt in &self.statements {
+            return_ty = stmt.eval(env)?;
+        }
+        return Ok(return_ty)
+}
+} */
 impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         //let mut env = env;
@@ -196,6 +205,8 @@ impl Eval<Ty> for Block {
 }
 }
 
+
+
 impl Eval<Ty> for FnDeclaration {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         //fn supposed to return type of body, or unit if empty
@@ -212,56 +223,85 @@ impl Eval<Ty> for Prog {
 impl Eval<Ty> for Statement {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
         todo!("not implemented {:?}", self)
-    }
-}
-/* #[allow(unreachable_code)]
-Ok(match stmt.clone() {
-    Statement::Let(_,id, t, e) => {
-        // let a: i32 = 5 + 2
-        // for now just accept an ident
-        let f = stmt.clone();
-        if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
-            return Ok(Type::Unit)
+/*         match stmt {
+            Statement::Let(_,id, ty,e) => {
+                match e {
+                    Some(e) => {
+                        match ty {
+                            Some(ty) => {
+                                return_ty = (Ty::Lit(ty.clone()),None)
+                            },
+                            None => {
+                                /* if id.contains("Bool") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
+                                    return_ty = (Ty::Lit(Type::Bool),None)
+                                } else if id.contains("I32") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
+                                    return_ty = (Ty::Lit(Type::I32),None)
+                                } else {
+                                    return_ty = (Ty::Lit(Type::Unit),None)
+                                } */
+                                let f = stmt.clone();
+                                println!("f to string is {:?}",f.to_string());
+                                println!("f contains false {:?}",f.to_string().contains("false"));
+                                println!("f contains Int {:?}",f.to_string().contains("fInt"));
+                                if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
+                                    return Err("Mismatch assignment")?
+                                } else if f.to_string().contains("Int") && f.to_string().contains("false"){
+                                    return Err("Mismatch assignment")?
+                                }
+                                return_ty = e.eval(env)?;
+                            },
+                        }
+                    },
+                    None => {
+                        return_ty = (Ty::Lit(Type::Unit),None)
+                    },
+                }
+            }
+            Statement::Assign(id, e) => {
+                let expr_e = e.eval(env)?;
+                match id.eval(env).unwrap() {
+                    (Ty::Lit(_), None) => Err("Mismatch assignment")?,
+                    (Ty::Lit(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                    (Ty::Ref(_), None) => Err("Mismatch assignment")?,
+                    (Ty::Ref(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                    (Ty::Lit(Type::Unit), None) => Err("Mismatch assignment")?,
+                    (Ty::Lit(Type::Unit), Some(r)) => env.v.set_ref(r, expr_e.0),
+                    (Ty::Mut(_), None) => Err("Mismatch assignment")?,
+                    (Ty::Mut(_), Some(r)) => env.v.set_ref(r, expr_e.0),
+                }
+            }
+            Statement::While(e, b) => { 
+                let checkblock=b.eval(env);
+                let check= e.eval(env);
+                if check?.0 == checkblock?.0 {
+                    return_ty = e.eval(env)?;
+                }
+                else {
+                    return b.eval(env);
+                }
+                /* let a = 2;
+                let b = false;
+                while a > 0 {
+                    a = a - 1;
+                    b = b + 1;
+                }
+                b */
+            }
+            Statement::Expr(_) => todo!(),
+            Statement::Fn(_) => todo!(),
+            
         }
-        return check_expr(e.unwrap(), env);
-    }
-    #[allow(unused_variables)]
-    Statement::Expr(e) => {
-        return check_expr(e, env);
-        // the type of an Expr is returned
-    }
-    #[allow(unused_variables)]
-    Statement::Assign(id, e) => {
-        // a = 5
-        let b = check_expr(e, env);
 
-        let a = check_expr(id, env);
-        if a.is_err() {
-            return Ok(Type::Unit)
-        } else if b.is_err() {
-            return Ok(Type::Unit)
-        } else if a == b {
-            return Ok(Type::Unit);
+    }
+        if self.semi {
+            return Ok((Ty::Lit(Type::Unit),None))
         } else {
-            return Err("types mismatch for assign".to_string())
+            return Ok(return_ty)
         }
-    }
-    #[allow(unused_variables)]
-    Statement::While(e, b) => { 
-        let checkblock=check_block(b, env.clone());
-        let check= check_expr(e, &env.clone());
-        if unify(Ty::Lit(check.clone().unwrap()),Ty::Lit(Type::Bool),None.unwrap()).is_err() {
-            return check //^"None.unwrap()"" hahaha this is getting ridiculous
-        }
-        else {
-            return checkblock;
-        }
-        
-    }
-    Statement::Fn(f) => { 
-        return Ok(Type::Unit)
-    }
-}) */
+} */
+}
+}
+
 #[cfg(test)]
 mod tests {
     use super::Ty;
