@@ -111,7 +111,7 @@ impl Eval<Val> for Block {
 }
 impl Eval<Val> for FnDeclaration {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
-        //fn supposed to return type of body, or unit if empty
+        //env.v.alloc(&self.id, self);
         println!("env in fndecl is {:?}",env);
         todo!()
     }

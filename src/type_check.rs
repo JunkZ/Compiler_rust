@@ -72,9 +72,9 @@ impl Eval<Ty> for Expr {
         //println!("expr self is {:?}",self);
         //println!("expr env is {:?}",self);
         match self {
-            Expr::Ident(id) => match env.v.get(id).clone() {
+            Expr::Ident(id) => match env.v.get(&id).clone() {
                 Some(t) => {
-                    Ok((t, env.v.get_ref(id)))
+                    Ok((t, None))
                 }
                 None => { 
                     Err("variable not found".to_string())
@@ -86,18 +86,18 @@ impl Eval<Ty> for Expr {
     
             #[allow(unused_variables)]
             Expr::BinOp(op, l, r) => {
-                let left = l.eval(env)?;
-                let right = r.eval(env)?;
+                let left = l.eval(env)?.0;
+                let right = r.eval(env)?.0;
+                if left == right && *op== Op::Add {
+                    return Ok(l.eval(env)?);
+                }
                 if left == right && *op != Op::Add && *op != Op::Sub {
-                    return Ok(left);
-                } else if left.0 == Ty::Lit(Type::I32) && right.0 == Ty::Lit(Type::String){
+                    return Ok(l.eval(env)?);
+                } else if left == Ty::Lit(Type::I32) && right == Ty::Lit(Type::String){
                     return Ok((Ty::Lit(Type::I32),None));
                 } else {
                     return Ok((Ty::Lit(Type::Unit),None));
                 }
-                //unify(Val::Lit(left.0), Ty::Lit(expected.0),None.unwrap())?;
-                //unify(Ty::Lit(right), Ty::Lit(expected.1),None.unwrap())?;
-                //Ok(expected.2)
     
             },
     
@@ -134,75 +134,21 @@ impl Eval<Ty> for Expr {
     }
 } 
 
-/* impl Eval<Ty> for Block {
-    fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        let mut return_ty = (Ty::Lit(Type::Unit),None);
-        for stmt in &self.statements {
-            return_ty = stmt.eval(env)?;
-        }
-        return Ok(return_ty)
-}
-} */
 impl Eval<Ty> for Block {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        //let mut env = env;
-
-        #[allow(unused_variables)]
-        let mut return_ty = (Ty::Lit(Type::Unit),None);
-        //let mut buf = VecDeque::new();
-        //Ok((Ty::Lit(Type::Unit),None))
+        let mut return_val = (Ty::Lit(Type::Unit),None);
         for stmt in &self.statements {
-            match stmt {
-                Statement::Let(_,id, ty,e) => {
-                    match e {
-                        Some(e) => {
-                            match ty {
-                                Some(ty) => {
-                                    return_ty = (Ty::Lit(ty.clone()),None)
-                                },
-                                None => {
-                                    /* if id.contains("Bool") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
-                                        return_ty = (Ty::Lit(Type::Bool),None)
-                                    } else if id.contains("I32") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
-                                        return_ty = (Ty::Lit(Type::I32),None)
-                                    } else {
-                                        return_ty = (Ty::Lit(Type::Unit),None)
-                                    } */
-                                    return_ty = e.eval(env)?;
-                                },
-                            }
-                        },
-                        None => {
-                            return_ty = (Ty::Lit(Type::Unit),None)
-                        },
-                    }
-                }
-                Statement::Assign(id, e) => {
-                    let expr_e = e.eval(env)?;
-                    match id.eval(env).unwrap() {
-                        (Ty::Lit(_), None) => Err("Mismatch assignment")?,
-                        (Ty::Lit(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                        (Ty::Ref(_), None) => Err("Mismatch assignment")?,
-                        (Ty::Ref(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                        (Ty::Lit(Type::Unit), None) => Err("Mismatch assignment")?,
-                        (Ty::Lit(Type::Unit), Some(r)) => env.v.set_ref(r, expr_e.0),
-                        (Ty::Mut(_), None) => Err("Mismatch assignment")?,
-                        (Ty::Mut(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                    }
-                }
-                Statement::While(_, _) => todo!(),
-                Statement::Expr(_) => todo!(),
-                Statement::Fn(_) => todo!(),
-                
+            let x =stmt.eval(env);
+            if x != Err("variable not found".to_string()) {
+                return_val = x?;
             }
-            if self.semi {
-                return Ok((Ty::Lit(Type::Unit),None))
-            } else {
-                return Ok(return_ty)
-            }
+
+        }
+        if self.semi {
+            return Ok((Ty::Lit(Type::Unit),None));
+        }
+        return Ok(return_val)
     }
-    Ok(return_ty)
-}
 }
 
 
@@ -222,85 +168,76 @@ impl Eval<Ty> for Prog {
 }
 impl Eval<Ty> for Statement {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        todo!("not implemented {:?}", self)
-/*         match stmt {
-            Statement::Let(_,id, ty,e) => {
-                match e {
-                    Some(e) => {
-                        match ty {
-                            Some(ty) => {
-                                return_ty = (Ty::Lit(ty.clone()),None)
-                            },
-                            None => {
-                                /* if id.contains("Bool") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
-                                    return_ty = (Ty::Lit(Type::Bool),None)
-                                } else if id.contains("I32") && e.eval(env)? == ((Ty::Lit(Type::Bool),None)) {
-                                    return_ty = (Ty::Lit(Type::I32),None)
-                                } else {
-                                    return_ty = (Ty::Lit(Type::Unit),None)
-                                } */
-                                let f = stmt.clone();
-                                println!("f to string is {:?}",f.to_string());
-                                println!("f contains false {:?}",f.to_string().contains("false"));
-                                println!("f contains Int {:?}",f.to_string().contains("fInt"));
-                                if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
-                                    return Err("Mismatch assignment")?
-                                } else if f.to_string().contains("Int") && f.to_string().contains("false"){
-                                    return Err("Mismatch assignment")?
-                                }
-                                return_ty = e.eval(env)?;
-                            },
-                        }
-                    },
-                    None => {
-                        return_ty = (Ty::Lit(Type::Unit),None)
-                    },
-                }
+        match self {
+        Statement::Let(_,id, ty,e) => {
+            match e {
+                Some(e) => {
+                    match ty.clone() {
+                        Some(ty) => {
+                            return Ok((Ty::Lit(ty),None));
+                        },
+                        None => {
+                            let f = self.clone();
+                            println!("f to string is {:?}",f.to_string());
+                            println!("f contains false {:?}",f.to_string().contains("false"));
+                            println!("f contains Int {:?}",f.to_string().contains("fInt"));
+                            if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
+                                return Err("Mismatch assignment")?
+                            } else if f.to_string().contains("Int") && f.to_string().contains("false"){
+                                return Err("Mismatch assignment")?
+                            }
+                            return Ok(e.eval(env)?);
+                        },
+                    }
+                },
+                None => {
+                    return Ok((Ty::Lit(Type::Unit),None))
+                },
             }
-            Statement::Assign(id, e) => {
-                let expr_e = e.eval(env)?;
-                match id.eval(env).unwrap() {
-                    (Ty::Lit(_), None) => Err("Mismatch assignment")?,
-                    (Ty::Lit(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                    (Ty::Ref(_), None) => Err("Mismatch assignment")?,
-                    (Ty::Ref(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                    (Ty::Lit(Type::Unit), None) => Err("Mismatch assignment")?,
-                    (Ty::Lit(Type::Unit), Some(r)) => env.v.set_ref(r, expr_e.0),
-                    (Ty::Mut(_), None) => Err("Mismatch assignment")?,
-                    (Ty::Mut(_), Some(r)) => env.v.set_ref(r, expr_e.0),
-                }
-            }
-            Statement::While(e, b) => { 
-                let checkblock=b.eval(env);
-                let check= e.eval(env);
-                if check?.0 == checkblock?.0 {
-                    return_ty = e.eval(env)?;
-                }
-                else {
-                    return b.eval(env);
-                }
-                /* let a = 2;
-                let b = false;
-                while a > 0 {
-                    a = a - 1;
-                    b = b + 1;
-                }
-                b */
-            }
-            Statement::Expr(_) => todo!(),
-            Statement::Fn(_) => todo!(),
-            
         }
+        Statement::Assign(id, e) => {
+            let expr_e = e.eval(env);
+            let id_e = id.eval(env);
 
-    }
-        if self.semi {
-            return Ok((Ty::Lit(Type::Unit),None))
-        } else {
-            return Ok(return_ty)
+            if id_e.is_err() {
+                return Ok(expr_e?)
+            } else if expr_e.is_err() {
+                return Ok((Ty::Lit(Type::Unit),None))
+            } else if expr_e == id_e {
+                return Ok((Ty::Lit(Type::Unit),None))
+            } else {
+                return Err("Mismatch assignment")?
+            }
+
         }
-} */
+        Statement::While(e, b) => { 
+            let checkblock=b.eval(env);
+            let check= e.eval(env);
+            if check?.0 == checkblock?.0 {
+                return Ok(e.eval(env)?);
+            }
+            else {
+                return Ok(b.eval(env)?);
+            }
+            /* let a = 2;
+            let b = false;
+            while a > 0 {
+                a = a - 1;
+                b = b + 1;
+            }
+            b */
+        }
+        Statement::Expr(e) => {
+            return Ok(e.eval(env)?);
+        },
+        Statement::Fn(_) => todo!(),
+        
+    }
 }
-}
+
+} 
+
+
 
 #[cfg(test)]
 mod tests {
