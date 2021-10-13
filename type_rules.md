@@ -1,11 +1,12 @@
 # Type Rules
 # Literals
 
-integer = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+integer = "1" | "2" | ... | "2147483647";
 
-i32 = integer;
+i32 = integer in bits;
 
 bool = "true" | "false";
+
 
 # Literal helpers
 
@@ -47,4 +48,10 @@ fn \: While(<a_1:expr>,<a_2:block>) \rightarrow type \\
 # Function
 ```math
 fn : Fn(<a_1:block>) \rightarrow type \\ 
+```
+
+# Unary ops
+```math
+fn : Ref(<a_1:expr>) \rightarrow ref \\ 
+fn : DeRef(<a_1:ref>) \rightarrow value \\
 ```
