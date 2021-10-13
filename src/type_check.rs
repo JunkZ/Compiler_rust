@@ -179,7 +179,8 @@ impl Eval<Ty> for Statement {
                             if Ty::Lit(ty.clone()) != e.eval(env)?.0 {
                                 return Err("missmatch".to_string())
                             } else {
-                                println!("ty is some right?3 {:?}",ty);
+                                println!("ty is some right? {:?}",ty);
+                                println!("e is some right? {:?}",e);
                                 println!("Type ty is some right? {:?}",Ty::Lit(ty.clone()));
                                 env.v.alloc(id, Ty::Lit(ty.clone()));
                                 return Ok((Ty::Lit(ty),None));
@@ -240,7 +241,7 @@ impl Eval<Ty> for Statement {
                 return Ok(e.eval(env)?);
             }
             else {
-                return Ok(b.eval(env)?);
+                return Err("mismatched types".to_string())
             }
             /* let a = 2;
             let b = false;

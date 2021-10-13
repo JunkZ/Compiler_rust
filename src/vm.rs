@@ -93,8 +93,7 @@ impl Eval<Val> for Block {
                     return_val = e.eval(env).unwrap();
                 },
                 Statement::While(c, block) => {
-                    let condition = c.eval(env).unwrap().0.get_bool().unwrap();
-                    while condition {
+                    while c.eval(env).unwrap().0.get_bool().unwrap() {
                         block.eval(env).unwrap();
                     }
                 },
