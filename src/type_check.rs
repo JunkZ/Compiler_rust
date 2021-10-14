@@ -37,8 +37,14 @@ impl From<&Literal> for Ty {
 // Helper for Op
 impl Op {
     // Evaluate operator to literal
-    fn unify(&self, left: Ty, right: Ty) -> Result<(Ty, Option<Ref>), Error> {
-        todo!()
+    pub fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> {
+        match expected == got {
+            true => Ok((result.into(), None)),
+            _ => Err(format!(
+                "Cannot unify types, expected {:?} got {:?}",
+                expected, got
+            )),
+        }
     }
 }
 pub type TypeEnv = HashMap<String, Type>;
@@ -88,12 +94,11 @@ impl Eval<Ty> for Expr {
     
             #[allow(unused_variables)]
             Expr::BinOp(op, l, r) => {
-                let le = l.eval(env);
-                if le.is_err() {
-                    println!("ERROR DETECTED!!! l is {:?} r is {:?}",l,r)
-                }
-                let left = le?.0;
-                let right = r.eval(env)?.0;
+                let lhs = l.eval(env)?;
+                let rhs = r.eval(env)?;
+
+                let left = lhs.0;
+                let right = rhs.0;
                 if left == right && *op== Op::Add {
                     return Ok(l.eval(env)?);
                 }
@@ -103,7 +108,7 @@ impl Eval<Ty> for Expr {
                     return Ok((Ty::Lit(Type::I32),None));
                 } else {
                     return Ok((Ty::Lit(Type::Unit),None));
-                }
+                } 
     
             },
     
@@ -146,9 +151,6 @@ impl Eval<Ty> for Block {
         for stmt in &self.statements {
             return_val = stmt.eval(env)?;
         }
-        if self.semi {
-            return Ok((Ty::Lit(Type::Unit),None));
-        }
         return Ok(return_val)
     }
 }
@@ -170,19 +172,76 @@ impl Eval<Ty> for Prog {
 }
 impl Eval<Ty> for Statement {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        match self {
+        let mut return_val = (Ty::Lit(Type::Unit),None);
+            env.v.push_scope();
+            match self {
+                Statement::Let(_,id, _, e) => {
+                    match e {
+                        Some(e) => {
+                            let l = e.eval(env)?;
+                            env.v.alloc(id, l.clone().0);
+                            return_val=l;
+                        },
+                        None => {
+                            env.v.alloc(id, Ty::Lit(Type::Unit));
+                            return_val = (Ty::Lit(Type::Unit),None);
+                        },
+                    }
+                }
+                Statement::Assign(id, e) => {
+                    let b = e.eval(env);
+
+                    let a = id.eval(env);
+                    //println!("a is {:?}",a);
+                    //println!("b is {:?}",b);
+                    if a.is_err() {
+                        return Ok((Ty::Lit(Type::Unit),None))
+                    } else if b.is_err() {
+                        return Ok((Ty::Lit(Type::Unit),None))
+                    } else if a.clone()?.0 == b.clone()?.0{
+                        return Ok(a?);
+                    } else if b?.0 == Ty::Lit(Type::Unit){
+                        return Ok(a?);
+                    } else {
+                        return Err("types mismatch for assign".to_string())
+                    }
+        
+                }
+                Statement::Expr(e) => {
+                    return_val = e.eval(env).unwrap();
+                },
+                Statement::While(c, block) => {
+                    let checkblock=block.eval(env);
+                    let check= c.eval(env);
+                    if check?.0 == checkblock?.0 {
+                        return Ok(c.eval(env)?);
+                    }
+                    else {
+                        return Err("mismatched types".to_string())
+                    }
+                },
+                Statement::Fn(_) => todo!(),
+            }
+        //env.v.pop_scope();
+        Ok(return_val)
+
+
+        /* match self {
         Statement::Let(_,id, ty,e) => {
             match ty.clone() {
                 Some(ty) => {
                     match e {
                         Some(e) => {
-                            if Ty::Lit(ty.clone()) != e.eval(env)?.0 {
+                            let e_eval = e.eval(env).clone()?.0;
+                            if Ty::Lit(ty.clone()) != e_eval {
                                 return Err("missmatch".to_string())
                             } else {
                                 println!("ty is some right? {:?}",ty);
                                 println!("e is some right? {:?}",e);
+                                println!("e_eval is {:?}",e_eval);
+                                println!("id is {:?}",id);
                                 println!("Type ty is some right? {:?}",Ty::Lit(ty.clone()));
-                                env.v.alloc(id, Ty::Lit(ty.clone()));
+                                env.v.alloc(&id, e_eval);
                                 return Ok((Ty::Lit(ty),None));
                             }
                             
@@ -256,10 +315,10 @@ impl Eval<Ty> for Statement {
         },
         Statement::Fn(_) => todo!(),
         
-    }
+    } */
 }
-
-} 
+}
+ 
 
 
 

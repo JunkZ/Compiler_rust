@@ -45,6 +45,6 @@ Assign = \frac{<a,a> \Downarrow n }{<x:=a,a>\Downarrow a[x \mapsto n]} \\ \\
 Let = \frac{<a,a> \Downarrow n }{<x=a,a>\Downarrow a[x \mapsto n]} \\ \\
 Block = \frac{<c_0,\sigma> \Downarrow \sigma' <c_1,\sigma> \Downarrow \sigma'' }{<c_0;c_1,\sigma>\Downarrow \sigma''} \\ \\
 While \ true = \frac{<a_0,\sigma> \Downarrow true <while \ a_0 \ do \ S,s>\Downarrow \sigma'}{<while \ a_0 \ do \ S,s>\Downarrow \sigma'} \\ \\
-While \ false = \frac{<a_0,\sigma> \Downarrow false}{<while \ a_0 \ do S,s>\Downarrow \sigma}
+While \ false = \frac{<a_0,\sigma> \Downarrow false}{<while \ a_0 \ do \ S,s>\Downarrow \sigma}
 
 ```
