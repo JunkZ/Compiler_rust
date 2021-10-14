@@ -68,11 +68,13 @@ impl Eval<Val> for Block {
                 Statement::Let(_,id, _, e) => {
                     match e {
                         Some(e) => {
-                            let l = e.eval(env)?.0;
-                            env.v.alloc(id, l);
+                            let l = e.eval(env)?;
+                            let r =env.v.alloc(id, l.clone().0);
+                            return_val=(l.0,Some(r));
                         },
                         None => {
-                            env.v.alloc(id, Val::UnInit);
+                            let r = env.v.alloc(id, Val::UnInit);
+                            return_val = (Val::Lit(Literal::Unit),Some(r))
                         },
                     }
                 }
@@ -97,7 +99,7 @@ impl Eval<Val> for Block {
                         block.eval(env).unwrap();
                     }
                 },
-                Statement::Fn(_) => todo!(),
+                Statement::Fn(f) => {return_val = f.eval(env)?},
             }
         }
         env.v.pop_scope();
@@ -110,9 +112,20 @@ impl Eval<Val> for Block {
 }
 impl Eval<Val> for FnDeclaration {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
-        //env.v.alloc(&self.id, self);
-        println!("env in fndecl is {:?}",env);
-        todo!()
+        let l_env = env.clone();
+        let mut params = vec![];
+        for p in self.parameters.0.iter() {
+            let par = p.clone();
+            if params.contains(&par) {
+                return Err("Parameter already exists".to_string());
+            } else {
+                params.push(par)
+            }
+        }
+        if params.len() != self.parameters.0.len() {
+            return Err("Number of parameters mismatch".to_string());
+        }
+        return Ok(self.body.eval(env)?);
     }
 }
 impl Eval<Val> for Expr {
@@ -144,71 +157,17 @@ impl Eval<Val> for Expr {
 }
 impl Eval<Val> for Prog {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
-        todo!("not implemented {:?}", self)
-    }
-}
-/* impl Eval<Val> for Statement {
-    fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
-        match self {
-            Statement::Let(m,id, t, e) => {
-                // let a: i32 = 5 + 2
-                // for now just accept an ident
-                //let f = self.clone();
-                //if f.to_string().contains("a") & !f.to_string().contains("0") & !f.to_string().contains("false"){
-                //    return Ok((Val::UnInit,None))
-                //} 
-                /* if id.contains("a") & !id.contains("0") & !id.contains("false"){
-                    return Ok((Val::UnInit,None))
-                } */
-/*                 if t.unwrap() == Type::I32 {
-                    return Ok((Val::Lit(e.unwrap()),None))
-                } */
-                //return check_expr(e, env);
-                //return self.eval(env);
-
-                return Ok((Val::UnInit,None))
-
-            },
-            Statement::Expr(e) => {
-                //return check_expr(e, env);
-                return  e.eval(env);
-                // the type of an Expr is returned
-            },
-            Statement::Assign(id, e) => {
-                // a = 5
-                //let b = check_expr(e, env);
-                let b = self.eval(env);
-                let a = self.eval(env);
-    
-                //let a = check_expr(id, env);
-                if a.is_err() {
-                    return Ok((Val::UnInit,None))
-                } else if b.is_err() {
-                    return Ok((Val::UnInit,None))
-                } else if a == b {
-                    return Ok((Val::UnInit,None));
-                } else {
-                    return Err("types mismatch for assign".to_string())
-                }
-
-            },
-            Statement::While(e, b) => { 
-                /* let checkblock=b.eval(env);
-                let check= e.eval(env);
-                if unify(Ty::Lit(check.clone().unwrap().0),Ty::Lit(Type::Bool),None.unwrap()).is_err()  {
-                    return check
-                }
-                else {
-                    return checkblock;
-                } */
-                return Ok((Val::UnInit,None));
-            },
-            Statement::Fn(f) => { 
-                return Ok((Val::UnInit,None))
+        let mut decl_ok = (Val::Lit(Literal::Unit),None);
+        for func in &self.0 {
+            if func.eval(env).is_ok(){
+                decl_ok = func.eval(env)?;
+            } else {
+                return Err("Invalid function declaration".to_string())
             }
         }
+        return  Ok(decl_ok);
     }
-} */
+}
     
 #[cfg(test)]
 mod tests {
@@ -475,7 +434,7 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 7);
     }
 
-    /* #[test]
+    #[test]
     fn test_prog() {
         let v = parse_test::<Prog, Val>(
             "
@@ -487,7 +446,7 @@ mod tests {
         );
 
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
-    }*/
+    }
 
     #[test]
     fn test_local_fn() {
@@ -558,7 +517,7 @@ fn test_check_block1() {
     assert_eq!(l.get_int().unwrap(), 4);
 }
 
-#[test]
+ #[test]
 fn test_check_if_then_else() {
     let ts: proc_macro2::TokenStream = "
     {

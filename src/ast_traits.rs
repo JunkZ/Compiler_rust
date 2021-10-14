@@ -197,13 +197,40 @@ impl fmt::Display for Arguments {
 
 impl fmt::Display for FnDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        let mut hello = String::from("fn ");
+        match &self.ty {
+            Some(t) => {hello.push_str(&t.to_string()); hello.push_str(" ");},
+            None => (),
+        }
+        hello.push_str(&self.id.to_string());
+        hello.push_str("(");
+        hello.push_str(&self.parameters.to_string());
+        hello.push_str(") {");
+        hello.push_str(&self.body.to_string());
+        hello.push_str("}");
+        /*  for iter in self.statements.iter() {
+            //println!("CURRENT LINE IS: {:?}", iter.to_string());
+            hello.push_str("  ");
+            if iter.to_string() != ";" {
+                hello.push_str(&iter.to_string());
+                hello.push_str("\n");
+            }
+            
+        } */
+        write!(f, "{}", hello)
     }
 }
 
 impl fmt::Display for Prog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        let mut hello = String::from("");
+        //hello.push_str(self.0.to_string());
+        for item in self.0.iter() {
+            hello.push_str(&item.to_string());
+            //hello.push_str(%item);
+
+        }
+        write!(f, "{}", hello)
     }
 }
 
