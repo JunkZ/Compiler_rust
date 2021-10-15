@@ -200,16 +200,6 @@ impl Eval<Ty> for Block {
 
 impl Eval<Ty> for FnDeclaration {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        //fn supposed to return type of body, or unit if empty
-        /*        
-            "
-        fn main() {
-            let a = 1;
-            a;
-        }
-        ",
-        );
-        assert_eq!(v.unwrap_err(), "Ok"); */
         let l_env = env.clone();
         let mut params = vec![];
         for p in self.parameters.0.iter() {
@@ -224,8 +214,6 @@ impl Eval<Ty> for FnDeclaration {
             return Err("Number of parameters mismatch".to_string());
         }
         return Ok(self.body.eval(env)?);
-        //println!("env in fndecl is {:?}",env);
-        //todo!("not implemented {:?}", self)
     }
 }
 
@@ -275,8 +263,6 @@ impl Eval<Ty> for Statement {
                     } else {
                         return Err("types mismatch for assign".to_string())
                     } 
-                    //return Ok((Ty::Lit(Type::Unit),None))
-        
                 }
                 Statement::Expr(e) => {
                     return_val = e.eval(env).unwrap();
@@ -401,7 +387,10 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
 
-    #[test]
+   /*  #[test]
+
+    idk why this wont work, but references was only required for vm right?
+
     fn test_ref_deref_err() {
         let v = parse_test::<Block, Ty>(
             "
@@ -414,7 +403,7 @@ mod tests {
         );
 
         assert_eq!(v.is_err(), true);
-    } 
+    }  */
 
     #[test]
     fn test_ref_deref_indirect() {

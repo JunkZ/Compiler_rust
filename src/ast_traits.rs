@@ -124,7 +124,6 @@ impl fmt::Display for Block { //pretty printing for blocks
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        println!("self is{:?}",self);
         let s = match self {
             Expr::Ident(a) => a.to_owned(),
             Expr::Lit(l) => format!("{}", l),
