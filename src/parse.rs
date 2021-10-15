@@ -3,6 +3,7 @@ use crate::ast::{
     Statement, Type, UnOp,
 };
 
+use proc_macro2::Ident;
 use syn::{
     parse::{Parse, ParseStream},
     Result, Token,
@@ -20,8 +21,10 @@ impl Parse for Literal {
         Ok(match l {
             syn::Lit::Int(l) => Literal::Int(l.base10_parse().unwrap()),
             syn::Lit::Bool(b) => Literal::Bool(b.value),
-            // for now only Int and Bool are covered
+            syn::Lit::Str(s) => Literal::String(s.value()),
             _ => unimplemented!(),
+            // for now only Int and Bool are covered
+            
         })
     }
 }
@@ -96,7 +99,19 @@ impl Parse for Op {
 
 impl Parse for UnOp {
     fn parse(input: ParseStream) -> Result<Self> {
-        todo!("not implemented {:?}", input)
+        if input.peek(Token![&]) {
+            let _: Token![&] = input.parse()?;
+            Ok(UnOp::Ref)
+        } else if input.peek(Token![*]) {
+            let _: Token![*] = input.parse()?;
+            Ok(UnOp::DeRef)
+        } else if input.peek(Token![!]) {
+            let _: Token![!] = input.parse()?;
+            Ok(UnOp::Bang)
+        }
+        else {
+            input.step(|cursor| Err(cursor.error("!!!!UNIMPLEMENTED UnOp/expected operator")))
+        }
     }
 }
 
@@ -137,13 +152,41 @@ impl Parse for Expr {
         } else if input.peek(syn::Ident) {
             // we have a left Ident, e.g, "my_best_ident_ever"
             let ident: syn::Ident = input.parse()?;
-            Expr::Ident(ident.to_string())
+            
+            // we need to hit call here
+            println!("!!!!!IDENT IS {}!!!!!!",ident);
+            if ident.to_string().contains("print") {
+                //let args = input.parse();
+                Expr::Print() //cba making args option
+            }
+            else if input.peek(syn::token::Paren){ 
+                //aah right, just check for par, add extra if to call
+                let args = input.parse();
+
+                Expr::Call(ident.to_string(),args?)
+            } else {
+                Expr::Ident(ident.to_string())
+            }
+            
+            /* if ident.to_string().chars().all(char::is_alphanumeric) {
+                if ident.
+            } */
+            
         } else if input.peek(syn::token::If) {
             // we have a left conditional, e.g., "if true {1} else {2}" or
             // if true { 5 }
             let IfThenOptElse(c, t, e) = input.parse()?;
             Expr::IfThenElse(Box::new(c), t, e)
-        } else {
+        } else if input.peek(Token![&]) || input.peek(Token![*])|| input.peek(Token![!]){
+            let uno = input.parse()?;
+            let e = input.parse()?;
+
+            Expr::UnOp(uno,Box::new(e))
+        } else if input.peek(syn::token::Brace){
+            let b = input.parse()?;
+            Expr::Block(b)
+            
+        }else{
             // else we require a left literal
             let left: Literal = input.parse()?;
             left.into()
@@ -205,27 +248,10 @@ fn test_println() {
 
 #[test]
 fn test_expr_block() {
-    let ts: proc_macro2::TokenStream = "
+    let ts: proc_macro2::TokenStream = "{
     {
         12
     }
-    "
-    .parse()
-    .unwrap();
-    println!("{:?}", ts);
-    let e: Expr = syn::parse2(ts).unwrap();
-
-    println!("e {:?}", e);
-    println!("e {}", e);
-}
-
-#[test]
-fn test_if_then_else_nested2() {
-    let ts: proc_macro2::TokenStream = "
-    if false {
-        2;
-    } else if true {
-        3 + 5;
     }"
     .parse()
     .unwrap();
@@ -237,8 +263,34 @@ fn test_if_then_else_nested2() {
 }
 
 #[test]
-fn test_if_then_else_nested3() {
+fn test_if_then_else_nested2() { 
+/* 
+
+    still complaining about curly brackets?, works in my lab5 though....
+    i know that if then else works though
+
+
+ */
     let ts: proc_macro2::TokenStream = "
+    if false {
+        2;
+    } else if true {
+        3 + 5;
+    }"
+    .parse()
+    .unwrap();
+    println!("{:?}", ts);
+    println!("Complaining about curly brackets, but worked fine in lab5");
+    let e: Expr = syn::parse2(ts).unwrap();
+
+    println!("e {:?}", e);
+    println!("e {}", e);
+    
+}
+
+#[test]
+fn test_if_then_else_nested3() {
+    let ts: proc_macro2::TokenStream = "{
     if false {
         2;
     } else if true {
@@ -248,7 +300,7 @@ fn test_if_then_else_nested3() {
     } else {
         5
     }
-    "
+    }"
     .parse()
     .unwrap();
     println!("{:?}", ts);
@@ -595,10 +647,12 @@ impl Parse for Statement {
             let bl: Block = input.parse()?;
             Ok(Statement::While(e, bl))
         } else {
+
             // a = 1 + 2, as a assignment
             // 1 + 2, as an expression
+            //println!("STATEMENT input  IS: {:?}",input);
             let left: Expr = input.parse()?;
-
+            
             if input.peek(syn::token::Eq) {
                 // a = 1 + 2
                 let _eq: syn::token::Eq = input.parse()?;

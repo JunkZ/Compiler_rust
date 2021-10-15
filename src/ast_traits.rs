@@ -1,7 +1,8 @@
 // Extra traits implemented for AST
 
+use std::fmt;
+
 use crate::ast::*;
-use std::{any::Any, fmt::{self, write}};
 
 // Back-port utility functions/traits for your AST here.
 
@@ -80,7 +81,7 @@ impl fmt::Display for Statement { //pretty printing for statements
             Statement::While(g,h)=> format!("while {} {}",g, h),
             //Statement::Fn(f)=> format!("{}",f),
             
-            Statement::Fn(_) => todo!(),
+            Statement::Fn(x) => format!("fn {}",x),
             //_ => unimplemented!(),
         };
         write!(f, "{}", s)
@@ -136,9 +137,10 @@ impl fmt::Display for Expr {
                     format!("if {} {} else {}", bo, bl, o.clone().unwrap()) //no display for option
                 }
             }
-            Expr::Call(_, _) => todo!(),
-            Expr::Block(_) => todo!(),
-            Expr::UnOp(_, _) => todo!(),
+            Expr::Call(s, arg) => format!("{}({})", s,arg),
+            Expr::Block(b) => format!("{}",b),
+            Expr::UnOp(op, e) => format!("{}{}", op,e),
+            Expr::Print() => format!("println"),
         };
         write!(f, "{}", s)
     }
@@ -163,7 +165,14 @@ fn display_type() {
 
 impl fmt::Display for UnOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        //let unop =self;
+        let unop =match self{
+            UnOp::Ref => "&",
+            UnOp::DeRef => "*",
+            UnOp::Mut => "mut",
+            UnOp::Bang => "!",
+        };
+        write!(f,"{}",unop)
     }
 }
 
@@ -191,7 +200,12 @@ impl fmt::Display for Parameters {
 
 impl fmt::Display for Arguments {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        let mut hello = String::from("");
+        for arg in self.0.iter() {
+            hello.push_str(&arg.to_string());
+            hello.push_str(", ");
+        }
+        write!(f, "{}", hello)
     }
 }
 

@@ -1,7 +1,7 @@
 use syn::ext::IdentExt;
 use syn::token::Return;
 
-use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type};
+use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type, UnOp};
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
@@ -139,11 +139,57 @@ impl Eval<Ty> for Expr {
                 
             },
             Expr::Call(id, args) => {
-                //let func = env.f
-                todo!()
-            },
+                match env.clone().f.0.get(id) {
+                   Some(f) => {
+                       if args.0.len() != f.0.parameters.0.clone().len() {
+                           return Err("Mismatch number of args and parameters".to_string());
+                       } else {
+                           let mut i = 0;
+                           
+                           for par in &f.0.parameters.0 {
+                               let x =args.0.get(i).unwrap().eval(env)?.0.clone();
+                               if  x != Ty::Lit(par.ty.clone()) {
+                                   return Err("Parameter mismatch arg type!".to_string())
+                               }
+                               i = i+1;
+
+                           }
+                           return Ok((Ty::Lit(Type::Unit),None))
+                       }
+                   },
+                   None => return Err("No function!".to_string()),
+               }
+
+           },
             Expr::Block(b) => b.eval(env),
-            Expr::UnOp(_, _) => todo!(),
+            Expr::UnOp(op, b) => match op {
+                UnOp::Ref => {
+                    let e_eval = b.eval(env);
+                    match e_eval.clone()?.1 {
+                        Some(asg) => {
+                            Ok((Ty::Ref(asg),Some(asg)))
+                        },
+                        None => {
+                            Ok((Ty::Ref(env.v.stack_val(e_eval?.0)),None))
+                        },
+                    }
+                },
+                UnOp::DeRef => {
+                    match b.eval(env)?.0 {
+
+                        Ty::Ref(r) => {
+                            Ok((env.v.de_ref(r), Some(r)))
+                    },
+                    Ty::Lit(_) => Err("Derefrencing a non reference".to_string()),
+                    Ty::Mut(_) => Err("Derefrencing a non reference".to_string()),
+                        
+                }
+                },
+                UnOp::Mut => {return Ok((Ty::Mut(Box::new(b.eval(env)?.0)),None))},
+                UnOp::Bang => {
+                    return Ok((Ty::Lit(Type::Bool),None))
+                },
+            }, 
             _ => unimplemented!(),
         }
     }
@@ -350,7 +396,8 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::Bool));
     }
 
-    #[test]
+
+    #[test] 
     fn test_ref_deref() {
         let v = parse_test::<Block, Ty>(
             "
@@ -378,7 +425,7 @@ mod tests {
         );
 
         assert_eq!(v.is_err(), true);
-    }
+    } 
 
     #[test]
     fn test_ref_deref_indirect() {
@@ -443,44 +490,6 @@ mod tests {
 
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
-
-    #[test]
-    fn test_while_err() {
-        let v = parse_test::<Block, Ty>(
-            "
-        {
-            let a = 2;
-            let b = false;
-            while a > 0 {
-                a = a - 1;
-                b = b + 1;
-            }
-            b
-        }
-        ",
-        );
-
-        assert_eq!(v.is_err(), true);
-    }
-
-    #[test]
-    fn test_while() {
-        let v = parse_test::<Block, Ty>(
-            "
-        {
-            let a = 2;
-            let b = 1;
-            while a > 0 {
-                a = a - 1;
-                b = b + 1;
-            }
-            b
-        }
-        ",
-        );
-
-        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
-    }
     #[test]
     fn test_while_ref() {
         let v = parse_test::<Block, Ty>(
@@ -523,6 +532,57 @@ mod tests {
 
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
+    #[test]
+    fn test_ref() {
+        let v = parse_test::<Block, Ty>(
+            "
+        {
+            let a = &1;
+            *a
+        }
+        ",
+        );
+        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
+    }
+
+    #[test]
+    fn test_while_err() {
+        let v = parse_test::<Block, Ty>(
+            "
+        {
+            let a = 2;
+            let b = false;
+            while a > 0 {
+                a = a - 1;
+                b = b + 1;
+            }
+            b
+        }
+        ",
+        );
+
+        assert_eq!(v.is_err(), true);
+    }
+
+    #[test]
+    fn test_while() {
+        let v = parse_test::<Block, Ty>(
+            "
+        {
+            let a = 2;
+            let b = 1;
+            while a > 0 {
+                a = a - 1;
+                b = b + 1;
+            }
+            b
+        }
+        ",
+        );
+
+        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
+    }
+    
 
     #[test]
     fn test_bool() {
@@ -538,7 +598,8 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::Bool));
     }
 
-    #[test]
+     
+     #[test]
     fn test_bool_bang() {
         let v = parse_test::<Block, Ty>(
             "
@@ -564,7 +625,9 @@ mod tests {
         );
 
         assert_eq!(v.unwrap(), Ty::Lit(Type::Bool));
-    }
+    } 
+
+    
 
     #[test]
     fn test_local_block() {
@@ -659,7 +722,7 @@ mod tests {
         assert_eq!(v.unwrap_err(), "Ok");
     }
 
-    #[test]
+     #[test]
     fn test_local_fn() {
         let v = parse_test::<Prog, Ty>(
             "
@@ -674,7 +737,7 @@ mod tests {
         );
         println!("v {:?}", v);
         assert_eq!(v.unwrap_err(), "Ok");
-    }
+    } 
 
     #[test]
     fn test_check_if_then_else_shadowing() {
@@ -698,16 +761,5 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
 
-    #[test]
-    fn test_ref() {
-        let v = parse_test::<Block, Ty>(
-            "
-        {
-            let a = &1;
-            *a
-        }
-        ",
-        );
-        assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
-    }
+    
 }

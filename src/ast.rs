@@ -68,6 +68,7 @@ pub enum Expr {
     IfThenElse(Box<Expr>, Block, Option<Block>),
     Block(Block),
     UnOp(UnOp, Box<Expr>),
+    Print(),
 }
 
 #[derive(Debug, Clone, PartialEq)]

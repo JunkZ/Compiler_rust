@@ -1,5 +1,5 @@
 
-use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement};
+use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, UnOp};
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
@@ -62,6 +62,7 @@ impl Op {
 impl Eval<Val> for Block {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
         let mut return_val = (Val::Lit(Literal::Unit),None);
+        //env.f.push_scope();
         env.v.push_scope();
         for be in &self.statements {
             match be {
@@ -149,12 +150,76 @@ impl Eval<Val> for Expr {
                     None => Ok((Val::UnInit,None)),
                 },
             },
-            Expr::Call(_, _) => todo!(),
+            Expr::Call(id, args) => {
+                println!("dont mind me just debugging !!!!!ID IS: {}!!!!!",&id);
+                if id.to_string().contains("print") {
+                    return Ok((Val::UnInit,None))
+                }
+                 match env.clone().f.0.get(id) {
+                    Some(f) => {
+                        if args.0.len() != f.0.parameters.0.clone().len() {
+                            return Err("Mismatch number of args and parameters".to_string());
+                        } else {
+                            let i = 0;
+                            for par in &f.0.parameters.0 {
+                                //type vs val ugly fix hah
+                                let x = args.0.get(i).unwrap().eval(env)?.0.clone();
+                                let h= x.get_int()?.to_string();
+                                let y =par.ty.to_string();
+                                println!("y is {}",y);
+                                println!("h is {}",h);
+                                if !y.contains(&h) {
+                                    return Err("Parameter mismatch arg type!".to_string())
+                                }
+
+                            }
+                            return Ok((Val::UnInit,None))
+                        }
+                    },
+                    None => return Err("No function!".to_string()),
+                }
+
+            },
             Expr::Block(b) => b.eval(env),
-            Expr::UnOp(_, _) => todo!(), 
+            Expr::UnOp(op, b) => match op {
+                UnOp::Ref => {
+                    let e_eval = b.eval(env);
+                    match e_eval.clone()?.1 {
+                        Some(asg) => {
+                            Ok((Val::Ref(asg),Some(asg)))
+                        },
+                        None => {
+                            Ok((Val::Ref(env.v.stack_val(e_eval?.0)),None))
+                        },
+                    }
+                },
+
+                UnOp::DeRef => {
+                    match b.eval(env)?.0 {
+                        //Val::Lit(_) => todo!(),
+                        //Val::UnInit => todo!(),
+                        //Val::Mut(_) => todo!(),
+                        Val::Ref(r) => {
+                            Ok((env.v.de_ref(r), Some(r)))
+                    },
+                    Val::Lit(_) => Err("Derefrencing a non reference".to_string()),
+                    Val::UnInit => Err("Derefrencing a non reference".to_string()),
+                    Val::Mut(_) => Err("Derefrencing a non reference".to_string()),
+                        
+                }
+                },
+                UnOp::Mut => {
+                    Ok((Val::Mut(Box::new(b.eval(env)?.0)),None))
+                },
+                UnOp::Bang => {
+                    Ok((Val::Lit(Literal::Bool(!b.eval(env)?.0.get_bool()?)),None))
+            }, 
         }
+            Expr::Print() => Ok((Val::Lit(Literal::Unit),None)),
     }
 }
+}
+
 impl Eval<Val> for Prog {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
         let mut decl_ok = (Val::Lit(Literal::Unit),None);
@@ -448,7 +513,7 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
 
-    #[test]
+     #[test]
     fn test_local_fn() {
         let v = parse_test::<Prog, Val>(
             "
@@ -463,7 +528,7 @@ mod tests {
         );
 
         assert_eq!(v.unwrap(), Val::Lit(Literal::Unit));
-    }
+    } 
 
     #[test]
     fn test_check_if_then_else_shadowing() {
@@ -499,70 +564,3 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
 }
-/* #[test]
-fn test_check_block1() {
-    let ts: proc_macro2::TokenStream = "
-    {
-        let a: i32 = 1 + 2; 
-        a = a + 1; 
-        a
-    }
-    "
-    .parse()
-    .unwrap();
-    let bl: Block = syn::parse2(ts).unwrap();
-    println!("bl {:?}", bl);
-    let l = bl.eval(&mut VarEnv::new()).unwrap();
-    println!("l {:?}", l);
-    assert_eq!(l.get_int().unwrap(), 4);
-}
-
- #[test]
-fn test_check_if_then_else() {
-    let ts: proc_macro2::TokenStream = "
-    {
-        let a: i32 = 1 + 2; 
-        if false { 
-            a = a + 1 
-        } else {
-            a = a - 1
-        };
-        if true { 
-            a = a + 3 
-        };
-        a
-    }
-    "
-    .parse()
-    .unwrap();
-    let bl: Block = syn::parse2(ts).unwrap();
-    println!("bl {:?}", bl);
-    let l = bl.eval(&mut VarEnv::new()).unwrap();
-    println!("l {:?}", l);
-    assert_eq!(l.get_int().unwrap(), 5);
-}
-
-#[test]
-fn test_check_if_then_else_shadowing() {
-    let ts: proc_macro2::TokenStream = "
-    {
-        let a: i32 = 1 + 2; 
-        if true { 
-            let a: i32 = 0; 
-            a = a + 1 
-        } else { 
-            a = a - 1 
-        };
-        a
-    }
-    "
-    .parse()
-    .unwrap();
-    let bl: Block = syn::parse2(ts).unwrap();
-    println!("bl {:?}", bl);
-    let l = bl.eval(&mut VarEnv::new()).unwrap();
-    println!("l {:?}", l);
-    // notice this will fail
-    assert_eq!(l.get_int().unwrap(), 3);
-} */
-
