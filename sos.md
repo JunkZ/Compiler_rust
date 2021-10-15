@@ -14,10 +14,10 @@ n = integer;
 σ = store;
 
 ```math
-Var = \frac{}{<a,\sigma> \rightarrow  <n,\sigma>} \\
+Var = \frac{}{<n,\sigma> \rightarrow  <n,\sigma>} \\
 ```
 # Operations
-bin = "And" | "Or" | "Lt" | "Gt" | "Leq" | "Geq"
+bin = "And" | "Or" | "Lt" | "Gt"
 ```math
 Add = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n+n',\sigma> \rightarrow <n+n',\sigma> } \\ \\
 Sub = \frac{<n,\sigma> \rightarrow <m,\sigma> }{<n-n',\sigma> \rightarrow <n-n',\sigma> } \\ \\

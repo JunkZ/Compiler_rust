@@ -267,7 +267,7 @@ fn test_if_then_else_nested2() {
 /* 
 
     still complaining about curly brackets?, works in my lab5 though....
-    i know that if then else works though
+    i know that if then else works...
 
 
  */
@@ -280,7 +280,6 @@ fn test_if_then_else_nested2() {
     .parse()
     .unwrap();
     println!("{:?}", ts);
-    println!("Complaining about curly brackets, but worked fine in lab5");
     let e: Expr = syn::parse2(ts).unwrap();
 
     println!("e {:?}", e);

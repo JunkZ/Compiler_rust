@@ -160,12 +160,10 @@ impl Eval<Val> for Expr {
                         } else {
                             let i = 0;
                             for par in &f.0.parameters.0 {
-                                //type vs val ugly fix hah
+                                //type vs val ugly fix
                                 let x = args.0.get(i).unwrap().eval(env)?.0.clone();
                                 let h= x.get_int()?.to_string();
                                 let y =par.ty.to_string();
-                                println!("y is {}",y);
-                                println!("h is {}",h);
                                 if !y.contains(&h) {
                                     return Err("Parameter mismatch arg type!".to_string())
                                 }

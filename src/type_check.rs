@@ -94,9 +94,6 @@ impl Eval<Ty> for Expr {
             Expr::Lit(Literal::Bool(_)) => Ok((Ty::Lit(Type::Bool),None)),
             Expr::Lit(Literal::Unit) => Ok((Ty::Lit(Type::Unit),None)),
             Expr::BinOp(op, l, r) => {
-                println!("l is {:?}",l);
-                println!("r is {:?}",r);
-                println!("op is {:?}",op);
                 let lhs = l.eval(env)?;
                 let rhs = r.eval(env)?;
                 let check = op_type(*op);

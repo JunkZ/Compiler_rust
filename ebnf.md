@@ -34,7 +34,7 @@ expr_combined = expr, "(", expr, ")";
 
 # Statements
 
-while = "while", bool_op, block;
+while = "while", (bool_op|bool), block;
 
 assign = expr, "=", expr;
 
@@ -42,4 +42,4 @@ let = "let", expr, ":", type, "=", expr;
 
 statement = let | assign | while | expr;
 
-block = { statement }, ";";
+block = "{", { statement }, "}", ";";
