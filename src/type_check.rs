@@ -1,16 +1,11 @@
-use syn::ext::IdentExt;
-use syn::token::Return;
-
 use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, Type, UnOp};
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
-use crate::vm::Val;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::convert::{From, Into};
 use std::fmt::Debug;
-use std::string;
 
 // type check
 #[derive(Debug, Clone, PartialEq)]
@@ -60,9 +55,15 @@ pub fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Err
         )),
     }
 }
+fn unify_simple(got: Type, expected: Type) -> Result<Type, TypeErr> {
+    match got == expected {
+        true => Ok(expected),
+        false => Err(format!("expected type {:?}, got type {:?}", expected, got)),
+    }
+}
+
 // op_types
 // returns types as: (expected left, expected right, result)
-#[allow(dead_code)]
 fn op_type(op: Op) -> (Type, Type, Type) {
     match op {
         Op::Add => (Type::I32, Type::I32, Type::I32),
@@ -70,8 +71,8 @@ fn op_type(op: Op) -> (Type, Type, Type) {
         Op::Mul => (Type::I32, Type::I32, Type::I32),
         Op::And => (Type::Bool, Type::Bool, Type::Bool),
         Op::Or => (Type::Bool, Type::Bool, Type::Bool),
-        Op::Lt => (Type::Bool, Type::Bool, Type::Bool),
-        Op::Gt => (Type::Bool, Type::Bool, Type::Bool),
+        Op::Lt => (Type::I32, Type::I32, Type::Bool),
+        Op::Gt => (Type::I32, Type::I32, Type::Bool),
         _ => todo!(),
     }
 }
@@ -92,47 +93,40 @@ impl Eval<Ty> for Expr {
             Expr::Lit(Literal::Int(_)) => Ok((Ty::Lit(Type::I32),None)),
             Expr::Lit(Literal::Bool(_)) => Ok((Ty::Lit(Type::Bool),None)),
             Expr::Lit(Literal::Unit) => Ok((Ty::Lit(Type::Unit),None)),
-    
-            #[allow(unused_variables)]
             Expr::BinOp(op, l, r) => {
+                println!("l is {:?}",l);
+                println!("r is {:?}",r);
+                println!("op is {:?}",op);
                 let lhs = l.eval(env)?;
                 let rhs = r.eval(env)?;
+                let check = op_type(*op);
 
-                let left = lhs.0;
-                let right = rhs.0;
-                if left == right && *op== Op::Add {
-                    return Ok(l.eval(env)?);
-                }
-                if left == right && *op != Op::Add && *op != Op::Sub {
-                    return Ok(l.eval(env)?);
-                } else if left == Ty::Lit(Type::I32) && right == Ty::Lit(Type::String){
-                    return Ok((Ty::Lit(Type::I32),None));
+                if lhs.0 == Ty::Lit(check.0.clone()) && rhs.0 == Ty::Lit(check.1.clone()) {
+                    if *op == Op::Lt || *op == Op::Gt || *op == Op::Eq {
+                        return Ok((Ty::Lit(Type::Bool),None))
+                    }
+                    return Ok(lhs);
                 } else {
-                    return Ok((Ty::Lit(Type::Unit),None));
-                } 
+                    Err("Binop mismatched types".to_string())
+                }
     
             },
-    
-            #[allow(unused_variables)]
             Expr::Par(e) => e.eval(env),
     
-            
-    
-            #[allow(unused_variables)]
             Expr::IfThenElse(cond,t,e) => match e{
                 
                 //if else block exist, check that else & if blocks have same type, else return as unit
                 Some(e) => { 
                     let l_block = t.eval(env)?;    
                     let r_block = e.eval(env)?;
-                    //println!("{:?}l_block IS:",l_block);
-                    //println!("{:?}r_block IS:",r_block);
-                    if l_block == r_block {
+                    if cond.eval(env)?.0!= Ty::Lit(Type::Bool) {
+                        Err("Condition not bool".to_string())
+                    } else if l_block == r_block {
                         Ok(r_block)
                     } else if r_block.0 == Ty::Lit(Type::Unit){
                         Ok(l_block)
                     } else{
-                        Ok((Ty::Lit(Type::Unit),None))
+                        Err("Block type mismatch".to_string())
                     }
                 },
                 None => Ok(t.eval(env)?),
@@ -240,11 +234,8 @@ impl Eval<Ty> for FnDeclaration {
 
 impl Eval<Ty> for Prog {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        let mut decl_ok = (Ty::Lit(Type::Unit),None);
         for func in &self.0 {
-            if func.eval(env).is_ok(){
-                decl_ok = func.eval(env)?; //nvm type not needed
-            } else {
+            if func.eval(env).is_err(){
                 return Err("Invalid function declaration".to_string())
             }
         }
@@ -276,29 +267,30 @@ impl Eval<Ty> for Statement {
                     //println!("a is {:?}",a);
                     //println!("b is {:?}",b);
                     if a.is_err() {
-                        return Ok((Ty::Lit(Type::Unit),None))
+                        return Err("Assignment ID is error".to_string())
                     } else if b.is_err() {
-                        return Ok((Ty::Lit(Type::Unit),None))
-                    } else if a.clone()?.0 == b.clone()?.0{
+                        return Err("Assignment Expression is error".to_string())
+                    }
+                    else if a.clone()?.0 == b.clone()?.0{
                         return Ok(a?);
                     } else if b?.0 == Ty::Lit(Type::Unit){
                         return Ok(a?);
                     } else {
                         return Err("types mismatch for assign".to_string())
-                    }
+                    } 
+                    //return Ok((Ty::Lit(Type::Unit),None))
         
                 }
                 Statement::Expr(e) => {
                     return_val = e.eval(env).unwrap();
                 },
                 Statement::While(c, block) => {
-                    let checkblock=block.eval(env);
                     let check= c.eval(env);
-                    if check?.0 == checkblock?.0 {
-                        return Ok(c.eval(env)?);
-                    }
-                    else {
-                        return Err("mismatched types".to_string())
+                    if check?.0 != Ty::Lit(Type::Bool) {
+                        return Err("Condition not of type bool".to_string())
+                    }else{
+                        let x = block.eval(env)?;
+                        return Ok(x);
                     }
                 },
                 Statement::Fn(f) => {return_val = f.eval(env)?},

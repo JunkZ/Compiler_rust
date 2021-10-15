@@ -1,9 +1,9 @@
-use crate::ast::{
+use crate::{ast::{
     Arguments, Block, Expr, FnDeclaration, Literal, Mutable, Op, Parameter, Parameters, Prog,
     Statement, Type, UnOp,
-};
+}};
 
-use proc_macro2::Ident;
+
 use syn::{
     parse::{Parse, ParseStream},
     Result, Token,
@@ -142,6 +142,7 @@ fn parse_op_fail() {
 // Render a "right associative" AST
 impl Parse for Expr {
     // Use a custom parser for expressions
+    
     fn parse(input: ParseStream) -> Result<Self> {
         let left = if input.peek(syn::token::Paren) {
             // we have a left (Expr), e.g., "(1 + 2)"
@@ -154,10 +155,9 @@ impl Parse for Expr {
             let ident: syn::Ident = input.parse()?;
             
             // we need to hit call here
-            println!("!!!!!IDENT IS {}!!!!!!",ident);
+            //println!("!!!!!IDENT IS {}!!!!!!",ident);
             if ident.to_string().contains("print") {
-                //let args = input.parse();
-                Expr::Print() //cba making args option
+                Expr::Print()
             }
             else if input.peek(syn::token::Paren){ 
                 //aah right, just check for par, add extra if to call

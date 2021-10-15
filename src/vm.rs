@@ -62,7 +62,6 @@ impl Op {
 impl Eval<Val> for Block {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
         let mut return_val = (Val::Lit(Literal::Unit),None);
-        //env.f.push_scope();
         env.v.push_scope();
         for be in &self.statements {
             match be {
@@ -151,12 +150,11 @@ impl Eval<Val> for Expr {
                 },
             },
             Expr::Call(id, args) => {
-                println!("dont mind me just debugging !!!!!ID IS: {}!!!!!",&id);
-                if id.to_string().contains("print") {
-                    return Ok((Val::UnInit,None))
-                }
                  match env.clone().f.0.get(id) {
                     Some(f) => {
+                        if f.0.id == "print" {
+                            return Ok((Val::Lit(Literal::Unit),None))
+                        }
                         if args.0.len() != f.0.parameters.0.clone().len() {
                             return Err("Mismatch number of args and parameters".to_string());
                         } else {
