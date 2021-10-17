@@ -91,7 +91,7 @@ impl Parse for Op {
             Ok(Op::Lt)
         } else {
             // to explicitly create an error at the current position
-            input.step(|cursor| Err(cursor.error("expected operator")))
+            input.step(|cursor| Err(cursor.error("TYPE expected operator")))
         }
     }
 }
@@ -110,7 +110,7 @@ impl Parse for UnOp {
             Ok(UnOp::Bang)
         }
         else {
-            input.step(|cursor| Err(cursor.error("!!!!UNIMPLEMENTED UnOp/expected operator")))
+            input.step(|cursor| Err(cursor.error("UnOp expected operator")))
         }
     }
 }
@@ -157,7 +157,8 @@ impl Parse for Expr {
             // we need to hit call here
             //println!("!!!!!IDENT IS {}!!!!!!",ident);
             if ident.to_string().contains("print") {
-                Expr::Print()
+                //Expr::Print()
+                Expr::Call("print".to_string(),input.parse()?)
             }
             else if input.peek(syn::token::Paren){ 
                 //aah right, just check for par, add extra if to call
@@ -944,7 +945,7 @@ fn test_prog() {
     println!("prog\n{}", pr.unwrap());
 }
 
-#[test]
+#[test] //think its cause of println?
 fn test_ref_de_ref() {
     let ts: proc_macro2::TokenStream = "
     fn main() {
