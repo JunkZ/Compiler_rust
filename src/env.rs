@@ -41,6 +41,7 @@ type Scopes<T> = Vec<Scope<T>>;
 #[derive(Debug, Clone)]
 pub struct VarEnv<T>(Scopes<T>);
 
+
 impl<T> VarEnv<T>
 where
     T: Clone,
@@ -130,7 +131,6 @@ impl FnEnv {
     fn new() -> Self {
         FnEnv(HashMap::new())
     }
-
     pub fn add_functions_unique(&mut self, new_fns: Vec<FnDeclaration>) -> Result<(), Error> {
         let mut hm = HashSet::new();
         for f in new_fns.clone() {

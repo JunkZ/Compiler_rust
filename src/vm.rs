@@ -152,9 +152,6 @@ impl Eval<Val> for Expr {
             Expr::Call(id, args) => {
                  match env.clone().f.0.get(id) {
                     Some(f) => {
-                        if f.0.id == "print" {
-                            return Ok((Val::Lit(Literal::Unit),None))
-                        }
                         if args.0.len() != f.0.parameters.0.clone().len() {
                             return Err("Mismatch number of args and parameters".to_string());
                         } else {
@@ -218,6 +215,7 @@ impl Eval<Val> for Expr {
 
 impl Eval<Val> for Prog {
     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
+        let _ = env.f.add_functions_unique(self.0.clone());
         let mut decl_ok = (Val::Lit(Literal::Unit),None);
         for func in &self.0 {
             if func.eval(env).is_ok(){
@@ -509,10 +507,10 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
 
-/*      #[test]
+ /*     #[test]
 
-    not sure what is causing this to fail since both fn tests and local blocks work?
-
+    
+    //I add the func to fnenv, but i think it fails cause of print or idk
     fn test_local_fn() {
         let v = parse_test::<Prog, Val>(
             "
@@ -528,7 +526,7 @@ mod tests {
 
         assert_eq!(v.unwrap(), Val::Lit(Literal::Unit));
     }  */
-
+    
     #[test]
     fn test_check_if_then_else_shadowing() {
         let v = parse_test::<Block, Val>(
