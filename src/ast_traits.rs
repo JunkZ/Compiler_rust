@@ -79,8 +79,6 @@ impl fmt::Display for Statement { //pretty printing for statements
             Statement::Let(_,d,Some(e),f )=> format!("Let {}: {} = {}",d, e, f.clone().unwrap()),
             Statement::Let(_,d,None,f )=> format!("{}",f.clone().unwrap()),
             Statement::While(g,h)=> format!("while {} {}",g, h),
-            //Statement::Fn(f)=> format!("{}",f),
-            
             Statement::Fn(x) => format!("fn {}",x),
             //_ => unimplemented!(),
         };
@@ -139,7 +137,6 @@ impl fmt::Display for Expr {
             Expr::Call(s, arg) => format!("{}({})", s,arg),
             Expr::Block(b) => format!("{}",b),
             Expr::UnOp(op, e) => format!("{}{}", op,e),
-            Expr::Print() => format!("println"),
         };
         write!(f, "{}", s)
     }

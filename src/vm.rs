@@ -152,6 +152,10 @@ impl Eval<Val> for Expr {
             Expr::Call(id, args) => {
                  match env.clone().f.0.get(id) {
                     Some(f) => {
+                        //println!("f is {:?}",f);
+                        if f.0.id == "print" {
+                            return Ok((Val::Lit(Literal::Unit),None))
+                        }
                         if args.0.len() != f.0.parameters.0.clone().len() {
                             return Err("Mismatch number of args and parameters".to_string());
                         } else {
@@ -208,7 +212,6 @@ impl Eval<Val> for Expr {
                     Ok((Val::Lit(Literal::Bool(!b.eval(env)?.0.get_bool()?)),None))
             }, 
         }
-            Expr::Print() => Ok((Val::Lit(Literal::Unit),None)),
     }
 }
 }
@@ -231,7 +234,6 @@ impl Eval<Val> for Prog {
 #[cfg(test)]
 mod tests {
     use super::Val;
-    use crate::ast::Literal;
     use crate::ast::{Block, Prog};
     use crate::common::parse_test;
 
@@ -507,10 +509,11 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
 
- /*     #[test]
+      #[test]
 
     
-    //I add the func to fnenv, but i think it fails cause of print or idk
+    /*
+    //I add the func to fnenv, and print parse works so idk
     fn test_local_fn() {
         let v = parse_test::<Prog, Val>(
             "
