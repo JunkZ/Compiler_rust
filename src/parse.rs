@@ -110,7 +110,7 @@ impl Parse for UnOp {
             Ok(UnOp::Bang)
         }
         else {
-            input.step(|cursor| Err(cursor.error("UnOp expected operator")))
+            input.step(|cursor| Err(cursor.error("UnOp/expected operator")))
         }
     }
 }

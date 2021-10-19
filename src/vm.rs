@@ -234,7 +234,7 @@ impl Eval<Val> for Prog {
 #[cfg(test)]
 mod tests {
     use super::Val;
-    use crate::ast::{Block, Prog};
+    use crate::ast::{Block, Prog, Literal};
     use crate::common::parse_test;
 
     #[test]
@@ -509,11 +509,8 @@ mod tests {
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
 
-      #[test]
-
-    
-    /*
-    //I add the func to fnenv, and print parse works so idk
+    #[test]
+     //I add the func to fnenv, and print parse tesat works so idk
     fn test_local_fn() {
         let v = parse_test::<Prog, Val>(
             "
@@ -528,7 +525,7 @@ mod tests {
         );
 
         assert_eq!(v.unwrap(), Val::Lit(Literal::Unit));
-    }  */
+    }  
     
     #[test]
     fn test_check_if_then_else_shadowing() {
