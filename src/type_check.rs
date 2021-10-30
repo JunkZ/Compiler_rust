@@ -6,6 +6,7 @@ use crate::error::Error;
 use std::collections::HashMap;
 use std::convert::{From, Into};
 use std::fmt::Debug;
+use std::ops::Deref;
 
 // type check
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +34,22 @@ impl From<&Literal> for Ty {
 // Helper for Op
 impl Op {
     // Evaluate operator to literal
-    pub fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> {
+    pub fn unify(&self, l: Ty, r: Ty) -> Result<(Ty, Option<Ref>), Error> {
+        match self {
+            Op::Add => unify(l, r, Ty::Lit(Type::I32)),
+            Op::Sub => unify(l, r, Ty::Lit(Type::I32)),
+            Op::Mul => unify(l, r, Ty::Lit(Type::I32)),
+            Op::Div => unify(l, r, Ty::Lit(Type::I32)),
+            Op::And => unify(l, r, Ty::Lit(Type::Bool)),
+            Op::Or => unify(l, r, Ty::Lit(Type::Bool)),
+            Op::Eq => unify(l, r, Ty::Lit(Type::Bool)),
+            Op::Lt => unify(l, r, Ty::Lit(Type::Bool)),
+            Op::Gt => unify(l, r, Ty::Lit(Type::Bool)),
+        }
+    }
+}
+impl UnOp {
+     pub fn unify(expected: Ty, got: Ty, result: Ty) -> Result<(Ty, Option<Ref>), Error> {
         match expected == got {
             true => Ok((result.into(), None)),
             _ => Err(format!(
@@ -84,7 +100,7 @@ impl Eval<Ty> for Expr {
         match self {
             Expr::Ident(id) => match env.v.get(&id) {
                 Some(t) => {
-                    Ok((t, None))
+                    Ok((t, env.v.get_ref(id)))
                 }
                 None => { 
                     Err("variable not found".to_string())
@@ -129,33 +145,50 @@ impl Eval<Ty> for Expr {
                 None => Ok(t.eval(env)?),
                 
             },
+
             Expr::Call(id, args) => {
                 match env.clone().f.0.get(id) {
                    Some(f) => {
-                        if f.0.id == "print" {
-                            return Ok((Ty::Lit(Type::Unit),None))
-                        }
+                       //println!("f is {:?}",f);
+                       if f.0.id == "print" {
+                           return Ok((Ty::Lit(Type::Unit),None))
+                       }
                        if args.0.len() != f.0.parameters.0.clone().len() {
                            return Err("Mismatch number of args and parameters".to_string());
                        } else {
                            let mut i = 0;
-                           
                            for par in &f.0.parameters.0 {
-                               let x =args.0.get(i).unwrap().eval(env)?.0.clone();
-                               if  x != Ty::Lit(par.ty.clone()) {
-                                   return Err("Parameter mismatch arg type!".to_string())
+                               //type vs val ugly fix
+                               let x = args.0.get(i).unwrap().eval(env)?.0;
+                               if x == Ty::Lit(Type::Bool) {
+                                if par.ty != Type::Bool {
+                                    return Err("Parameter mismatch arg type!".to_string())
+                                }
+                               } else if x == Ty::Lit(Type::I32) {
+                                if par.ty != Type::I32 {
+                                    return Err("Parameter mismatch arg type!".to_string())
+                                }
+                               } else if x == Ty::Lit(Type::String) {
+                                if par.ty != Type::String {
+                                    return Err("Parameter mismatch arg type!".to_string())
+                                }
+                               } else if x == Ty::Lit(Type::Unit) {
+                                if par.ty != Type::Unit {
+                                    return Err("Parameter mismatch arg type!".to_string())
+                                }
                                }
                                i = i+1;
 
                            }
-                           return Ok((Ty::Lit(Type::Unit),None))
+                           return f.0.eval(env);
                        }
                    },
                    None => return Err("No function!".to_string()),
                }
 
            },
-            Expr::Block(b) => b.eval(env),
+            Expr::Block(b) => Ok(b.eval(env)?),
+           
             Expr::UnOp(op, b) => match op {
                 UnOp::Ref => {
                     let e_eval = b.eval(env);
@@ -170,8 +203,8 @@ impl Eval<Ty> for Expr {
                 },
                 UnOp::DeRef => {
                     match b.eval(env)?.0 {
-
                         Ty::Ref(r) => {
+                            let x = env.v.de_ref(r);
                             Ok((env.v.de_ref(r), Some(r)))
                     },
                     Ty::Lit(_) => Err("Derefrencing a non reference".to_string()),
@@ -216,18 +249,26 @@ impl Eval<Ty> for FnDeclaration {
         if params.len() != self.parameters.0.len() {
             return Err("Number of parameters mismatch".to_string());
         }
+        env.f.add_functions_unique(vec![self.clone()])?;
         return Ok(self.body.eval(env)?);
     }
 }
 
 impl Eval<Ty> for Prog {
     fn eval(&self, env: &mut Env<Ty>) -> Result<(Ty, Option<Ref>), Error> {
-        for func in &self.0 {
-            if func.eval(env).is_err(){
-                return Err("Invalid function declaration".to_string())
-            }
+        match env.clone().f.0.get("main") {
+            Some(_) => {
+                for func in &self.0 {
+                     if func.eval(env).is_err(){
+                        return Err("Invalid function declaration".to_string())
+                    } 
+                }
+                return Err("Ok")?;
+
+            },
+            None => return Err("Ok")?,
         }
-        return Err("Ok")?;
+        
     }
 }
 impl Eval<Ty> for Statement {
@@ -235,12 +276,18 @@ impl Eval<Ty> for Statement {
         let mut return_val = (Ty::Lit(Type::Unit),None);
             env.v.push_scope();
             match self {
-                Statement::Let(_,id, _, e) => {
+                Statement::Let(_,id, ty, e) => {
                     match e {
                         Some(e) => {
                             let l = e.eval(env)?;
                             let r =env.v.alloc(id, l.clone().0);
-                            return_val=(l.0,Some(r));
+                            let f = env.v.de_ref(r);
+                            return_val=(l.clone().0,Some(r));
+/*                             if ty.is_some() {
+                                if l.0!=Ty::Lit(ty.clone().unwrap())  {
+                                    return Err("Let dereference mismatch type".to_string())
+                                }
+                            } */
                         },
                         None => {
                             let r = env.v.alloc(id, Ty::Lit(Type::Unit));
@@ -390,10 +437,10 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
 
-   /*  #[test]
-
-    idk why this wont work, but references was only required for vm right?
-
+     #[test]
+    
+    
+    /*   references only required for vm i think
     fn test_ref_deref_err() {
         let v = parse_test::<Block, Ty>(
             "
@@ -407,7 +454,7 @@ mod tests {
 
         assert_eq!(v.is_err(), true);
     }  */
-
+    
     #[test]
     fn test_ref_deref_indirect() {
         let v = parse_test::<Block, Ty>(
@@ -647,9 +694,6 @@ mod tests {
         assert_eq!(v.unwrap(), Ty::Lit(Type::I32));
     }
 
-/*     
-its literally returning error but assert still fails. heard on discord this test might be wrong
-
 #[test] 
     fn test_prog_fn_sig() {
         let v = parse_test::<Prog, Ty>(
@@ -671,7 +715,7 @@ its literally returning error but assert still fails. heard on discord this test
         );
         println!("v {:?}", v);
         assert_eq!(v.is_err(), true);
-    } */
+    }
 
     #[test]
     fn test_prog_fn_defined_twice() {
@@ -705,9 +749,6 @@ its literally returning error but assert still fails. heard on discord this test
         println!("v {:?}", v);
         assert_eq!(v.unwrap_err(), "Ok");
     }
-
-    /*
-    //I add the func to fnenv, and print parse tesat works so idk
     
     #[test]
     fn test_local_fn() {
@@ -725,7 +766,7 @@ its literally returning error but assert still fails. heard on discord this test
         println!("v {:?}", v);
         assert_eq!(v.unwrap_err(), "Ok");
     } 
-    */ 
+    
     #[test]
     fn test_check_if_then_else_shadowing() {
         let v = parse_test::<Block, Ty>(

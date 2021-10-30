@@ -77,7 +77,7 @@ impl fmt::Display for Statement { //pretty printing for statements
             Statement::Assign(a,b)=> format!("{} = {}",a, b),
             Statement::Expr(c)=> format!("{} ",c), //should not have any text
             Statement::Let(_,d,Some(e),f )=> format!("Let {}: {} = {}",d, e, f.clone().unwrap()),
-            Statement::Let(_,d,None,f )=> format!("{}",f.clone().unwrap()),
+            Statement::Let(_,d,None,f )=> format!("Let {} = {}",d,f.clone().unwrap()),
             Statement::While(g,h)=> format!("while {} {}",g, h),
             Statement::Fn(x) => format!("fn {}",x),
             //_ => unimplemented!(),
@@ -197,6 +197,7 @@ impl fmt::Display for Parameters {
 impl fmt::Display for Arguments {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut hello = String::from("");
+        let i = 0;
         for arg in self.0.iter() {
             hello.push_str(&arg.to_string());
             hello.push_str(", ");
@@ -215,9 +216,9 @@ impl fmt::Display for FnDeclaration {
         hello.push_str(&self.id.to_string());
         hello.push_str("(");
         hello.push_str(&self.parameters.to_string());
-        hello.push_str(") {");
+        hello.push_str(") ");
         hello.push_str(&self.body.to_string());
-        hello.push_str("}");
+        //hello.push_str("");
         /*  for iter in self.statements.iter() {
             //println!("CURRENT LINE IS: {:?}", iter.to_string());
             hello.push_str("  ");

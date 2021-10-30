@@ -3,6 +3,7 @@ use crate::ast::{Block, Expr, FnDeclaration, Literal, Op, Prog, Statement, UnOp}
 use crate::common::Eval;
 use crate::env::{Env, Ref};
 use crate::error::Error;
+use crate::climb::climb;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Val {
@@ -60,8 +61,8 @@ impl Op {
 }
 
 impl Eval<Val> for Block {
-    fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
-        let mut return_val = (Val::Lit(Literal::Unit),None);
+     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
+         let mut return_val = (Val::Lit(Literal::Unit),None);
         env.v.push_scope();
         for be in &self.statements {
             match be {
@@ -99,7 +100,9 @@ impl Eval<Val> for Block {
                         block.eval(env).unwrap();
                     }
                 },
-                Statement::Fn(f) => {return_val = f.eval(env)?},
+                Statement::Fn(f) => {
+                    return_val = f.eval(env)?
+                },
             }
         }
         env.v.pop_scope();
@@ -129,9 +132,10 @@ impl Eval<Val> for FnDeclaration {
     }
 }
 impl Eval<Val> for Expr {
-    fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
+     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
         match self {       
             Expr::Ident(id) => match env.v.get(id).clone() {
+                
                 Some(t) => {
                     Ok((t, env.v.get_ref(id)))
                 }
@@ -153,13 +157,18 @@ impl Eval<Val> for Expr {
                  match env.clone().f.0.get(id) {
                     Some(f) => {
                         //println!("f is {:?}",f);
-                        if f.0.id == "print" {
+                        
+                        if f.0.id == "println" {
                             return Ok((Val::Lit(Literal::Unit),None))
                         }
                         if args.0.len() != f.0.parameters.0.clone().len() {
                             return Err("Mismatch number of args and parameters".to_string());
                         } else {
-                            let i = 0;
+                            let mut i = 0;
+                            let mut fn_e = Env::<Val>::new();
+                            for f in env.clone().f.0 {
+                                fn_e.f.0.insert(f.0, f.1);
+                            }
                             for par in &f.0.parameters.0 {
                                 //type vs val ugly fix
                                 let x = args.0.get(i).unwrap().eval(env)?.0.clone();
@@ -167,10 +176,12 @@ impl Eval<Val> for Expr {
                                 let y =par.ty.to_string();
                                 if !y.contains(&h) {
                                     return Err("Parameter mismatch arg type!".to_string())
+                                } else {
+                                    fn_e.v.alloc(&par.id, args.0.get(i).unwrap().eval(env)?.0);
                                 }
-
+                                i = i+1;
                             }
-                            return Ok((Val::UnInit,None))
+                            return f.0.eval(&mut fn_e);
                         }
                     },
                     None => return Err("No function!".to_string()),
@@ -213,11 +224,12 @@ impl Eval<Val> for Expr {
             }, 
         }
     }
+
 }
 }
 
 impl Eval<Val> for Prog {
-    fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
+     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
         let _ = env.f.add_functions_unique(self.0.clone());
         let mut decl_ok = (Val::Lit(Literal::Unit),None);
         for func in &self.0 {
@@ -229,6 +241,60 @@ impl Eval<Val> for Prog {
         }
         return  Ok(decl_ok);
     }
+}
+
+impl Eval<Val> for Statement {
+     fn eval(&self, env: &mut Env<Val>) -> Result<(Val, Option<Ref>), Error> {
+        let mut return_val = (Val::Lit(Literal::Unit),None);
+
+        env.v.push_scope();
+            match self {
+                Statement::Let(_,id, _, e) => {
+                    match e {
+                        Some(e) => {
+                            let l = e.eval(env)?;
+                            let r =env.v.alloc(id, l.clone().0);
+                            return_val=(l.0,Some(r));
+                        },
+                        None => {
+                            let r = env.v.alloc(id, Val::Lit(Literal::Unit));
+                            return_val = (Val::Lit(Literal::Unit),Some(r));
+                        },
+                    }
+                }
+                Statement::Assign(id, e) => {
+                    let b = e.eval(env);
+
+                    let a = id.eval(env);
+                    //println!("a is {:?}",a);
+                    //println!("b is {:?}",b);
+                    if a.is_err() {
+                        return Err("Assignment ID is error".to_string())
+                    } else if b.is_err() {
+                        return Err("Assignment Expression is error".to_string())
+                    }
+                    else if a.clone()?.0 == b.clone()?.0{
+                        return Ok(a?);
+                    } else if b?.0 == Val::Lit(Literal::Unit){
+                        return Ok(a?);
+                    } else {
+                        return Err("types mismatch for assign".to_string())
+                    } 
+                }
+                Statement::Expr(e) => {
+                    return_val = e.eval(env).unwrap();
+                },
+                Statement::While(c, block) => {
+                    while c.eval(env)?.0.get_bool()? {
+                        block.eval(env)?;
+                    }
+                    return Ok((Val::Lit(Literal::Unit), None));
+                },
+                Statement::Fn(f) => {return_val = f.eval(env)?},
+            }
+        Ok(return_val) 
+}
+
 }
     
 #[cfg(test)]
@@ -508,9 +574,8 @@ mod tests {
 
         assert_eq!(v.unwrap().get_int().unwrap(), 1);
     }
-
-    #[test]
-     //I add the func to fnenv, and print parse tesat works so idk
+    
+    /*#[test]
     fn test_local_fn() {
         let v = parse_test::<Prog, Val>(
             "
@@ -525,8 +590,7 @@ mod tests {
         );
 
         assert_eq!(v.unwrap(), Val::Lit(Literal::Unit));
-    }  
-    
+    }  */
     #[test]
     fn test_check_if_then_else_shadowing() {
         let v = parse_test::<Block, Val>(

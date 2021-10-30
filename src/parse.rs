@@ -1,7 +1,7 @@
 use crate::{ast::{
     Arguments, Block, Expr, FnDeclaration, Literal, Mutable, Op, Parameter, Parameters, Prog,
     Statement, Type, UnOp,
-}};
+}, vm::Val};
 
 
 use syn::{
@@ -150,29 +150,24 @@ impl Parse for Expr {
             let _ = syn::parenthesized!(content in input);
             let e: Expr = content.parse()?;
             Expr::Par(Box::new(e))
+            
+                
+            
         } else if input.peek(syn::Ident) {
             // we have a left Ident, e.g, "my_best_ident_ever"
             let ident: syn::Ident = input.parse()?;
-            
-            // we need to hit call here
-            //println!("!!!!!IDENT IS {}!!!!!!",ident);
-            if ident.to_string().contains("print") {
-                //Expr::Print()
-                Expr::Call("print".to_string(),input.parse()?)
-            }
-            else if input.peek(syn::token::Paren){ 
-                //aah right, just check for par, add extra if to call
-                let args = input.parse();
-
-                Expr::Call(ident.to_string(),args?)
+            if ident.to_string() == "println" {
+                input.parse::<syn::token::Bang>()?;
+                let args: Arguments = input.parse()?;
+                Expr::Call("println".to_string(), args)
+            }else if input.peek(syn::token::Paren) { 
+                 let args = input.parse()?;
+                Expr::Call(ident.to_string(),args)
             } else {
                 Expr::Ident(ident.to_string())
             }
-            
-            /* if ident.to_string().chars().all(char::is_alphanumeric) {
-                if ident.
-            } */
-            
+
+        
         } else if input.peek(syn::token::If) {
             // we have a left conditional, e.g., "if true {1} else {2}" or
             // if true { 5 }

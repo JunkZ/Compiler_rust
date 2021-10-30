@@ -94,11 +94,7 @@ fn to_vec(e: Expr) -> Vec<ExprItems> {
                 Lit(l) => {
                     vec.push(ExprItems::Op(op));
                     vec.push(ExprItems::Lit(l));
-                    //println!("vec is: {:?}:",vec);
                 }, 
-                //println!("vec is: {:?}:",vec);
-                //Ident(a) => to_vec(Expr::Ident(a)),
-                //IfThenElse(bo,bl ,o ) => to_vec(Expr::IfThenElse(bo,bl,o)),
                 _ => unreachable!(),
             } 
         vec
