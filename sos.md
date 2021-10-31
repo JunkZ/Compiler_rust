@@ -40,11 +40,10 @@ IfThenElse \ False = \frac{<b,\sigma> \Downarrow false <c_2,\sigma> \Downarrow \
 # Statements
 
 ```math
-
 Assign = \frac{<a,a> \Downarrow n }{<x:=a,a>\Downarrow a[x \mapsto n]} \\ \\
 Let = \frac{<a,a> \Downarrow n }{<x=a,a>\Downarrow a[x \mapsto n]} \\ \\
 Block = \frac{<c_0,\sigma> \Downarrow \sigma' <c_1,\sigma> \Downarrow \sigma'' }{<c_0;c_1,\sigma>\Downarrow \sigma''} \\ \\
 While \ true = \frac{<a_0,\sigma> \Downarrow true <while \ a_0 \ do \ S,s>\Downarrow s'}{<while \ a_0 \ do \ S,s>\Downarrow s'} \\ \\
-While \ false = \frac{<a_0,\sigma> \Downarrow false}{<while \ a_0 \ do \ S,s>\Downarrow s}
+While \ false = \frac{<a_0,\sigma> \Downarrow false}{<while \ a_0 \ do \ S,s>\Downarrow s} \\ \\
 fn = \frac{}{(f(p_1,p_2,...,p_n),s) \rightarrow (S,s')}
 ```
