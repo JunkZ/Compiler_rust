@@ -14,7 +14,7 @@ type = "bool" | "i32" | "()";
 
 literal = number | bool;
 
-ident = { character };
+ident = { character | integer };
 
 # Operations
 
@@ -32,6 +32,10 @@ expr = ident | ifthenelse | literal | bin_op;
 
 expr_combined = expr, "(", expr, ")";
 
+ref = "&",ident;
+
+deref = "*",ref;
+
 # Statements
 
 while = "while", (bool_op|bool), block;
@@ -43,3 +47,11 @@ let = "let", expr, ":", type, "=", expr;
 statement = let | assign | while | expr;
 
 block = "{", { statement }, "}", ";";
+
+parameter = (ident | ref),":",("&" | type);
+
+fn = "fn",ident,"(",{ parameter },")",[ "->","type" ],( block | "{", "}" );
+
+# Program
+
+program = { fn };

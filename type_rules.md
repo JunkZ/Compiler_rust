@@ -44,13 +44,18 @@ fn \: Assign(<a_1:expr>,<a_2:expr>) \rightarrow type \\
 fn \: While(<a_1:expr>,<a_2:block>) \rightarrow type \\
 ```
 
+# Unary ops
+```math
+fn : Ref(<a_1:expr>) \rightarrow ref \\ 
+fn : DeRef(<a_1:ref>) \rightarrow value \\
+```
+
 # Function
 ```math
 fn : Fn(<a_1:block>) \rightarrow type \\ 
 ```
 
-# Unary ops
+# Prog
 ```math
-fn : Ref(<a_1:expr>) \rightarrow ref \\ 
-fn : DeRef(<a_1:ref>) \rightarrow value \\
+fn : Prog(<a_1:prog>,<a_2:ref>) \rightarrow type \\ 
 ```
