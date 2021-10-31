@@ -192,14 +192,14 @@ impl Eval<Ty> for Expr {
             Expr::UnOp(op, b) => match op {
                 UnOp::Ref => {
                     let e_eval = b.eval(env);
-                    match e_eval.clone()?.1 {
+                     match e_eval.clone()?.1 {
                         Some(asg) => {
                             Ok((Ty::Ref(asg),Some(asg)))
                         },
                         None => {
                             Ok((Ty::Ref(env.v.stack_val(e_eval?.0)),None))
                         },
-                    }
+                    } 
                 },
                 UnOp::DeRef => {
                     match b.eval(env)?.0 {
